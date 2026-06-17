@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrador – Auto XQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Login ── */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #07111a;
+      padding: 24px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.35);
+    }
+    .login-logo { font-size:1rem; font-weight:800; letter-spacing:-0.04em; color:#07111a; margin-bottom:10px; }
+    .login-card h1 { font-size:2.2rem; line-height:0.95; letter-spacing:-0.08em; margin-bottom:32px; }
+    .login-field { display:flex; flex-direction:column; gap:7px; margin-bottom:16px; }
+    .login-field label { font-size:0.78rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#676767; }
+    .login-field input {
+      padding:14px 16px; border:1.5px solid rgba(18,18,18,0.15); border-radius:12px;
+      font:inherit; font-size:1rem; outline:none; transition:border-color 0.15s;
+    }
+    .login-field input:focus { border-color:#7ea8ff; }
+    .login-btn {
+      width:100%; padding:16px; background:#07111a; color:#fff; border:none;
+      border-radius:12px; font:inherit; font-weight:800; font-size:1rem; cursor:pointer;
+      margin-top:8px; transition:opacity 0.15s;
+    }
+    .login-btn:hover { opacity:0.88; }
+    .login-error { margin-top:12px; color:#b3261e; font-size:0.9rem; font-weight:700; text-align:center; }
+
+    /* ── Admin layout ── */
+    .admin-wrap { padding:32px 52px 80px; }
+    .admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+    .admin-title { font-size:clamp(2rem,4vw,3rem); letter-spacing:-0.07em; line-height:0.95; }
+    .btn-add {
+      padding:14px 26px; background:#07111a; color:#fff; border:none;
+      border-radius:999px; font:inherit; font-weight:800; font-size:0.9rem; cursor:pointer; transition:opacity 0.15s;
+    }
+    .btn-add:hover { opacity:0.85; }
+
+    /* ── Car rows ── */
+    .admin-list { display:flex; flex-direction:column; gap:10px; margin-bottom:40px; }
+    .admin-row {
+      display:grid; grid-template-columns:80px 1fr auto auto auto;
+      align-items:center; gap:16px; background:#fff; border-radius:16px;
+      padding:14px 20px; box-shadow:0 2px 12px rgba(0,0,0,0.06); border:1px solid rgba(18,18,18,0.08);
+    }
+    .admin-thumb { width:80px; height:56px; border-radius:10px; object-fit:cover; }
+    .admin-car-name { font-weight:800; font-size:0.98rem; letter-spacing:-0.03em; }
+    .admin-car-price { font-size:0.86rem; color:#b3261e; font-weight:700; margin-top:2px; }
+    .abadge {
+      padding:4px 12px; border-radius:999px; font-size:0.72rem; font-weight:800;
+      letter-spacing:0.08em; text-transform:uppercase; color:#fff; white-space:nowrap;
+    }
+    .abadge.available { background:#0f8b52; }
+    .abadge.sold { background:#b3261e; }
+    .btn-edit {
+      padding:8px 18px; background:#f0f0f0; color:#111; border:none;
+      border-radius:999px; font:inherit; font-weight:700; font-size:0.82rem; cursor:pointer; transition:background 0.15s;
+    }
+    .btn-edit:hover { background:#e0e0e0; }
+    .btn-del {
+      padding:8px 18px; background:#fef2f2; color:#b3261e; border:1px solid #f5c6c6;
+      border-radius:999px; font:inherit; font-weight:700; font-size:0.82rem; cursor:pointer; transition:background 0.15s;
+    }
+    .btn-del:hover { background:#fce8e8; }
+
+    /* ── Form panel ── */
+    .form-panel {
+      background:#fff; border-radius:24px; padding:36px;
+      border:1px solid rgba(18,18,18,0.1); box-shadow:0 8px 40px rgba(0,0,0,0.08);
+    }
+    .form-head {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid rgba(18,18,18,0.1);
+    }
+    .form-head-title { font-size:1.55rem; font-weight:800; letter-spacing:-0.05em; }
+    .btn-cancel {
+      padding:10px 20px; background:none; color:#676767;
+      border:1px solid rgba(18,18,18,0.2); border-radius:999px;
+      font:inherit; font-weight:700; font-size:0.86rem; cursor:pointer;
+    }
+    .btn-cancel:hover { background:#f5f5f5; }
+    .fgrid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+    .fgrid.three { grid-template-columns:1fr 1fr 1fr; }
+    .ffield { display:flex; flex-direction:column; gap:8px; }
+    .ffield label {
+      font-size:0.76rem; font-weight:700; letter-spacing:0.1em;
+      text-transform:uppercase; color:#676767;
+    }
+    .ffield input, .ffield select, .ffield textarea {
+      padding:13px 15px; border:1.5px solid rgba(18,18,18,0.15); border-radius:11px;
+      font:inherit; font-size:0.94rem; outline:none; transition:border-color 0.15s; background:#fff;
+    }
+    .ffield input:focus, .ffield select:focus, .ffield textarea:focus { border-color:#7ea8ff; }
+    .ffield textarea { resize:vertical; min-height:72px; }
+    .full { grid-column:1/-1; }
+    .fsection {
+      font-size:0.95rem; font-weight:800; letter-spacing:-0.02em;
+      margin:20px 0 14px; padding-top:16px; border-top:1px solid rgba(18,18,18,0.1);
+    }
+    /* Dynamic rows */
+    .dlist { display:flex; flex-direction:column; gap:9px; margin-bottom:12px; }
+    .spec-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+    .hl-row   { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; }
+    .spec-row input, .hl-row input {
+      padding:10px 13px; border:1.5px solid rgba(18,18,18,0.15); border-radius:10px;
+      font:inherit; font-size:0.9rem; outline:none;
+    }
+    .spec-row input:focus, .hl-row input:focus { border-color:#7ea8ff; }
+    .btn-rm {
+      width:34px; height:34px; border-radius:50%; background:#fef2f2; color:#b3261e;
+      border:1px solid #f5c6c6; cursor:pointer; font-size:1rem;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .btn-rm:hover { background:#fce8e8; }
+    .btn-add-row {
+      padding:7px 16px; background:#f0f0f0; color:#111; border:none;
+      border-radius:999px; font:inherit; font-weight:700; font-size:0.80rem; cursor:pointer; align-self:start;
+    }
+    .btn-add-row:hover { background:#e4e4e4; }
+    /* Image previews */
+    .img-prev-main { width:100%; height:160px; object-fit:cover; border-radius:12px; margin-top:10px; display:none; }
+    .img-prev-main.on { display:block; }
+    .sec-previews { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
+    .sec-thumb-wrap { position:relative; }
+    .sec-thumb-wrap img { width:100%; height:70px; object-fit:cover; border-radius:8px; display:block; }
+    .sec-thumb-del {
+      position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%;
+      background:rgba(0,0,0,0.55); color:#fff; border:none; font-size:14px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; line-height:1; padding:0;
+    }
+    .sec-thumb-del:hover { background:#b3261e; }
+    /* Form actions */
+    .factions { display:flex; align-items:center; gap:14px; margin-top:28px; padding-top:24px; border-top:1px solid rgba(18,18,18,0.1); }
+    .btn-save {
+      padding:15px 34px; background:#07111a; color:#fff; border:none;
+      border-radius:999px; font:inherit; font-weight:800; font-size:0.95rem; cursor:pointer; transition:opacity 0.15s;
+    }
+    .btn-save:hover { opacity:0.88; }
+    .amsg { font-size:0.88rem; font-weight:700; }
+    .amsg.ok { color:#0f8b52; }
+    .amsg.err { color:#b3261e; }
+    .no-cars { text-align:center; padding:60px 20px; color:#676767; }
+
+    @media (max-width:900px) {
+      .admin-wrap { padding:24px 20px 60px; }
+      .admin-row { grid-template-columns:60px 1fr auto; gap:10px; }
+      .admin-row .abadge, .admin-row .btn-edit { display:none; }
+      .fgrid, .fgrid.three { grid-template-columns:1fr; }
+      .spec-row { grid-template-columns:1fr auto; }
+      .spec-row input:first-child { display:none; }
+    }
+    @media (max-width:640px) {
+      .admin-row { grid-template-columns:52px 1fr auto; }
+      .sec-previews { grid-template-columns:repeat(3,1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+
+    <!-- ── Login ── -->
+    <div id="loginScreen">
+      <div class="login-wrap">
+        <div class="login-card">
+          <p class="login-logo">AUTO XQ</p>
+          <h1>Panel de admin</h1>
+          <form id="loginForm">
+            <div class="login-field">
+              <label>Usuario</label>
+              <input type="text" id="lUser" autocomplete="username" required>
+            </div>
+            <div class="login-field">
+              <label>Contraseña</label>
+              <input type="password" id="lPass" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="login-btn">Ingresar</button>
+            <p class="login-error" id="lError" style="display:none">Usuario o contraseña incorrectos.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Admin ── -->
+    <div id="adminScreen" style="display:none">
+      <nav class="site-nav">
+        <div class="nav-shell">
+          <a href="index.html" class="nav-brand">AUTO XQ</a>
+          <div class="nav-links">
+            <a href="inventario.html" class="nav-link">Inventario</a>
+          </div>
+          <button class="whatsapp-nav-btn" id="btnLogout" style="background:#b3261e;">Cerrar sesion</button>
+        </div>
+      </nav>
+
+      <div class="admin-wrap">
+        <div class="admin-header">
+          <h1 class="admin-title">Administrador</h1>
+          <button class="btn-add" id="btnAddCar">+ Agregar carro</button>
+        </div>
+
+        <div class="admin-list" id="adminList">
+          <p class="no-cars">Cargando...</p>
+        </div>
+
+        <!-- Form panel -->
+        <div class="form-panel" id="formPanel" style="display:none">
+          <div class="form-head">
+            <h2 class="form-head-title" id="formTitle">Nuevo carro</h2>
+            <button class="btn-cancel" id="btnCancel" type="button">Cancelar</button>
+          </div>
+
+          <form id="adminCarForm">
+            <input type="hidden" id="fId">
+
+            <!-- Datos basicos -->
+            <div class="fgrid three">
+              <div class="ffield full">
+                <label>Nombre del carro</label>
+                <input type="text" id="fName" placeholder="Ej: Honda Civic 2018" required>
+              </div>
+              <div class="ffield">
+                <label>Año</label>
+                <input type="text" id="fYear" placeholder="2018">
+              </div>
+              <div class="ffield">
+                <label>Estado</label>
+                <select id="fStatus">
+                  <option value="Disponible">Disponible</option>
+                  <option value="Vendido">Vendido</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <label>Precio</label>
+                <input type="text" id="fPrice" placeholder="Q80,000">
+              </div>
+              <div class="ffield">
+                <label>Tipo de precio</label>
+                <select id="fPriceType">
+                  <option value="Negociable">Negociable</option>
+                  <option value="Poco negociable">Poco negociable</option>
+                  <option value="Precio fijo">Precio fijo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Descripcion -->
+            <p class="fsection">Descripcion</p>
+            <div class="fgrid">
+              <div class="ffield full">
+                <label>Descripcion del carro</label>
+                <textarea id="fDesc" rows="3" placeholder="Describe brevemente el carro, su historial, condicion general, etc."></textarea>
+              </div>
+            </div>
+
+            <!-- Fotos -->
+            <p class="fsection">Fotos</p>
+            <div class="fgrid">
+              <div class="ffield">
+                <label>Foto principal</label>
+                <input type="file" id="fMain" accept="image/*">
+                <img class="img-prev-main" id="prevMain" src="" alt="preview">
+              </div>
+              <div class="ffield">
+                <label>Fotos secundarias</label>
+                <input type="file" id="fSecondary" accept="image/*" multiple style="display:none">
+                <button type="button" class="btn-add-row" id="btnAddSecPhotos" style="margin-top:4px">+ Agregar fotos</button>
+                <div class="sec-previews" id="prevSecondary"></div>
+              </div>
+            </div>
+
+            <!-- Especificaciones -->
+            <p class="fsection">Especificaciones tecnicas</p>
+            <div class="dlist" id="specsList"></div>
+            <button type="button" class="btn-add-row" id="btnAddSpec">+ Agregar especificacion</button>
+
+            <!-- Puntos destacados -->
+            <p class="fsection">Puntos destacados</p>
+            <div class="dlist" id="hlList"></div>
+            <button type="button" class="btn-add-row" id="btnAddHl">+ Agregar punto</button>
+
+            <!-- Detalles negativos -->
+            <p class="fsection">Detalles a considerar</p>
+            <div class="dlist" id="negList"></div>
+            <button type="button" class="btn-add-row" id="btnAddNeg">+ Agregar detalle</button>
+
+            <div class="factions">
+              <button type="submit" class="btn-save">Guardar carro</button>
+              <span class="amsg" id="amsg"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ── Credentials (cambia aqui el usuario y contraseña) ── */
+    const ADMIN_USER = "admin";
+    const ADMIN_PASS = "autoxq2025";
+
+    /* ── DB ── */
+    const storageKey = "carros-page-inventory";
+    const dbName     = "carros-page-db";
+    const storeName  = "inventario";
+    let carsCache       = [];
+    let editingId       = null;
+    let secImagesArr    = [];
+
+    function openDb() {
+      return new Promise((res, rej) => {
+        const req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+        };
+        req.onsuccess = () => res(req.result);
+        req.onerror   = () => rej(new Error("Error al abrir DB"));
+      });
+    }
+
+    async function readDb() {
+      const db = await openDb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(storeName, "readonly").objectStore(storeName).get(storageKey);
+        req.onsuccess = () => res(req.result || []);
+        req.onerror   = () => rej(new Error("Error al leer DB"));
+      });
+    }
+
+    async function writeDb(cars) {
+      const db = await openDb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(storeName, "readwrite").objectStore(storeName).put(cars, storageKey);
+        req.onsuccess = () => res();
+        req.onerror   = () => rej(new Error("Error al guardar DB"));
+      });
+    }
+
+    function readFile(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload  = () => res(r.result);
+        r.onerror = () => rej(new Error("Error al leer imagen"));
+        r.readAsDataURL(file);
+      });
+    }
+
+    function escH(s) {
+      return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+
+    /* ── Auth ── */
+    function isLogged() { return sessionStorage.getItem("adminOk") === "1"; }
+
+    function showAdmin() {
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("adminScreen").style.display = "block";
+      loadCars();
+    }
+
+    function showLogin() {
+      document.getElementById("loginScreen").style.display = "block";
+      document.getElementById("adminScreen").style.display = "none";
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const u = document.getElementById("lUser").value.trim();
+      const p = document.getElementById("lPass").value;
+      if (u === ADMIN_USER && p === ADMIN_PASS) {
+        sessionStorage.setItem("adminOk", "1");
+        showAdmin();
+      } else {
+        document.getElementById("lError").style.display = "block";
+      }
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      sessionStorage.removeItem("adminOk");
+      showLogin();
+    });
+
+    /* ── Defaults con specs/highlights para migración ── */
+    const DEFAULTS = [
+      {
+        id: 1001, name: "Toyota 4Runner 2014", price: "Q140,000", priceType: "Negociable",
+        specs: [
+          { label: "Año",         value: "2014" },
+          { label: "Version",     value: "SR5" },
+          { label: "Motor",       value: "V6 4.0L DOHC" },
+          { label: "Potencia",    value: "270 HP" },
+          { label: "Torque",      value: "278 lb-pie" },
+          { label: "Transmision", value: "Automatica 5 vel." },
+          { label: "Traccion",    value: "4x2" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Pasajeros",   value: "5 - 7" },
+          { label: "Tanque",      value: "87 litros" },
+          { label: "Frenos",      value: "ABS" },
+          { label: "Remolque",    value: "Hasta 2,268 kg" }
+        ],
+        highlights: [
+          "Motor en excelente estado", "Interior de cuero original",
+          "Llantas al 95% de vida", "Aire acondicionado funcionando perfectamente",
+          "89,000 millas comprobables", "Sin ningun check ni pendiente mecanico",
+          "Detalles menores de pintura exterior", "Ideal para ciudad y viajes largos"
+        ]
+      },
+      {
+        id: 1002, name: "Mazda 3 2005", price: "Q20,000", priceType: "Precio fijo",
+        specs: [
+          { label: "Año",         value: "2005" },
+          { label: "Color",       value: "Gris" },
+          { label: "Motor",       value: "2.3L DOHC" },
+          { label: "Cilindros",   value: "4 en linea" },
+          { label: "Transmision", value: "Automatica Tiptronic" },
+          { label: "Traccion",    value: "Delantera (FWD)" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Pasajeros",   value: "5" },
+          { label: "Direccion",   value: "Asistida" },
+          { label: "A/C",         value: "Si" }
+        ],
+        highlights: [
+          "Motor 2.3L al 100%, sin humo ni corrosion", "Transmision automatica Tiptronic",
+          "Suspension ajustada recientemente", "Aire acondicionado funcionando correctamente",
+          "Interior espacioso para 5 pasajeros", "Llantas con aprox. 50% de vida util",
+          "Economico de mantener, ideal para uso diario", "Detalles esteticos de pintura en bumper y capo"
+        ]
+      },
+    ];
+
+    /* ── Load & render list ── */
+    async function loadCars() {
+      const raw = await readDb();
+      let needsSave = false;
+      carsCache = (Array.isArray(raw) ? raw : []).map(c => {
+        const def = DEFAULTS.find(d => d.name === c.name);
+        if (!c.id) {
+          c.id = def ? def.id : Date.now();
+          needsSave = true;
+        }
+        if (def) {
+          if (!c.specs      && def.specs)      { c.specs      = def.specs;      needsSave = true; }
+          if (!c.highlights && def.highlights)  { c.highlights = def.highlights; needsSave = true; }
+          if (!c.price      && def.price)      { c.price      = def.price;      needsSave = true; }
+          if (!c.priceType  && def.priceType)  { c.priceType  = def.priceType;  needsSave = true; }
+        }
+        return c;
+      });
+      if (needsSave) await writeDb(carsCache);
+      renderList();
+    }
+
+    function displayPrice(car) {
+      if (car.price) return car.price + (car.priceType ? " — " + car.priceType : "");
+      const m = (car.description||"").match(/^(Q[\d,]+[^.]*)\./);
+      return m ? m[1] : "—";
+    }
+
+    function renderList() {
+      const el = document.getElementById("adminList");
+      if (!carsCache.length) {
+        el.innerHTML = '<p class="no-cars">No hay carros. Agrega el primero.</p>';
+        return;
+      }
+      el.innerHTML = carsCache.map((car, i) => `
+        <div class="admin-row">
+          <img class="admin-thumb" src="${escH(car.mainImage)}" alt="${escH(car.name)}">
+          <div>
+            <div class="admin-car-name">${escH(car.name)}</div>
+            <div class="admin-car-price">${escH(displayPrice(car))}</div>
+          </div>
+          <span class="abadge ${car.status==="Vendido"?"sold":"available"}">${escH(car.status)}</span>
+          <button class="btn-edit" onclick="openEdit(${i})">Editar</button>
+          <button class="btn-del"  onclick="delCar(${i})">Eliminar</button>
+        </div>`
+      ).join("");
+    }
+
+    /* ── Delete ── */
+    async function delCar(i) {
+      if (!confirm("¿Eliminar este carro? No se puede deshacer.")) return;
+      const target = carsCache[i]; if (!target) return;
+      const freshDb  = await readDb();
+      let freshCars  = (Array.isArray(freshDb) ? freshDb : carsCache.slice()).filter(c => c.id !== target.id);
+      await writeDb(freshCars);
+      carsCache = freshCars;
+      renderList();
+      closeForm();
+    }
+
+    /* ── Spec / highlight rows ── */
+    function makeSpecRow(label = "", value = "") {
+      const d = document.createElement("div");
+      d.className = "spec-row";
+      d.innerHTML = `
+        <input type="text" placeholder="Caracteristica (Ej: Motor)" value="${escH(label)}">
+        <input type="text" placeholder="Valor (Ej: V6 4.0L)" value="${escH(value)}">
+        <button type="button" class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+      return d;
+    }
+
+    function makeHlRow(text = "") {
+      const d = document.createElement("div");
+      d.className = "hl-row";
+      d.innerHTML = `
+        <input type="text" placeholder="Ej: Motor en excelente estado" value="${escH(text)}">
+        <button type="button" class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+      return d;
+    }
+
+    function makeNegRow(text = "") {
+      const d = document.createElement("div");
+      d.className = "hl-row";
+      d.innerHTML = `
+        <input type="text" placeholder="Ej: Detalle de pintura en puerta trasera" value="${escH(text)}">
+        <button type="button" class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+      return d;
+    }
+
+    document.getElementById("btnAddSpec").addEventListener("click", () =>
+      document.getElementById("specsList").appendChild(makeSpecRow()));
+    document.getElementById("btnAddHl").addEventListener("click", () =>
+      document.getElementById("hlList").appendChild(makeHlRow()));
+    document.getElementById("btnAddNeg").addEventListener("click", () =>
+      document.getElementById("negList").appendChild(makeNegRow()));
+
+    /* ── Image previews ── */
+    document.getElementById("fMain").addEventListener("change", async e => {
+      const f = e.target.files[0]; if (!f) return;
+      const prev = document.getElementById("prevMain");
+      prev.src = await readFile(f);
+      prev.classList.add("on");
+    });
+
+    function renderSecPreviews() {
+      const cont = document.getElementById("prevSecondary");
+      cont.innerHTML = "";
+      secImagesArr.forEach((src, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "sec-thumb-wrap";
+        const img = document.createElement("img");
+        img.src = src;
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "sec-thumb-del";
+        del.textContent = "×";
+        del.addEventListener("click", () => { secImagesArr.splice(i, 1); renderSecPreviews(); });
+        wrap.appendChild(img);
+        wrap.appendChild(del);
+        cont.appendChild(wrap);
+      });
+    }
+
+    document.getElementById("btnAddSecPhotos").addEventListener("click", () => {
+      document.getElementById("fSecondary").click();
+    });
+
+    document.getElementById("fSecondary").addEventListener("change", async e => {
+      const files = Array.from(e.target.files);
+      for (const f of files) {
+        secImagesArr.push(await readFile(f));
+      }
+      renderSecPreviews();
+      e.target.value = "";
+    });
+
+    /* ── Open / close form ── */
+    document.getElementById("btnAddCar").addEventListener("click", () => {
+      editingId = null;
+      document.getElementById("formTitle").textContent = "Nuevo carro";
+      resetForm();
+      showFormPanel();
+    });
+
+    document.getElementById("btnCancel").addEventListener("click", closeForm);
+
+    function showFormPanel() {
+      const p = document.getElementById("formPanel");
+      p.style.display = "block";
+      p.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function closeForm() {
+      document.getElementById("formPanel").style.display = "none";
+      resetForm();
+    }
+
+    function resetForm() {
+      document.getElementById("adminCarForm").reset();
+      document.getElementById("fId").value = "";
+      document.getElementById("prevMain").classList.remove("on");
+      document.getElementById("prevMain").src = "";
+      secImagesArr = [];
+      document.getElementById("prevSecondary").innerHTML = "";
+      document.getElementById("specsList").innerHTML = "";
+      document.getElementById("hlList").innerHTML = "";
+      document.getElementById("negList").innerHTML = "";
+      document.getElementById("amsg").textContent = "";
+      document.getElementById("amsg").className = "amsg";
+    }
+
+    function openEdit(i) {
+      const car = carsCache[i]; if (!car) return;
+      editingId = car.id;
+      document.getElementById("formTitle").textContent = "Editar carro";
+      document.getElementById("fId").value     = car.id;
+      document.getElementById("fName").value   = car.name || "";
+      document.getElementById("fYear").value   = car.year || "";
+      document.getElementById("fStatus").value = car.status || "Disponible";
+      document.getElementById("fPrice").value  = car.price || "";
+      document.getElementById("fPriceType").value = car.priceType || "Negociable";
+      document.getElementById("fDesc").value   = car.bodyDescription || "";
+
+      if (car.mainImage) {
+        const prev = document.getElementById("prevMain");
+        prev.src = car.mainImage;
+        prev.classList.add("on");
+      }
+
+      secImagesArr = [...(car.secondaryImages || [])];
+      renderSecPreviews();
+
+      const sl = document.getElementById("specsList");
+      sl.innerHTML = "";
+      (car.specs || []).forEach(s => sl.appendChild(makeSpecRow(s.label, s.value)));
+
+      const hl = document.getElementById("hlList");
+      hl.innerHTML = "";
+      (car.highlights || []).forEach(h => hl.appendChild(makeHlRow(h)));
+
+      const nl = document.getElementById("negList");
+      nl.innerHTML = "";
+      (car.negatives || []).forEach(n => nl.appendChild(makeNegRow(n)));
+
+      showFormPanel();
+    }
+
+    /* ── Save ── */
+    document.getElementById("adminCarForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const msgEl = document.getElementById("amsg");
+      msgEl.textContent = "Guardando..."; msgEl.className = "amsg";
+
+      try {
+        const mainFile = document.getElementById("fMain").files[0];
+
+        const specs = Array.from(document.getElementById("specsList").querySelectorAll(".spec-row")).map(row => {
+          const inp = row.querySelectorAll("input");
+          return { label: inp[0].value.trim(), value: inp[1].value.trim() };
+        }).filter(s => s.label || s.value);
+
+        const highlights = Array.from(document.getElementById("hlList").querySelectorAll(".hl-row input"))
+          .map(i => i.value.trim()).filter(Boolean);
+
+        const negatives = Array.from(document.getElementById("negList").querySelectorAll(".hl-row input"))
+          .map(i => i.value.trim()).filter(Boolean);
+
+        let mainImage = null;
+        if (editingId !== null) {
+          const existing = carsCache.find(c => c.id === editingId);
+          if (existing) { mainImage = existing.mainImage; }
+        }
+        if (mainFile) mainImage = await readFile(mainFile);
+        const secondaryImages = secImagesArr.slice();
+
+        if (!mainImage) {
+          msgEl.textContent = "Debes agregar una foto principal."; msgEl.className = "amsg err"; return;
+        }
+
+        const price     = document.getElementById("fPrice").value.trim();
+        const priceType = document.getElementById("fPriceType").value;
+
+        const car = {
+          id:              editingId !== null ? editingId : Date.now(),
+          name:            document.getElementById("fName").value.trim(),
+          year:            document.getElementById("fYear").value.trim(),
+          status:          document.getElementById("fStatus").value,
+          price, priceType, mainImage, secondaryImages, specs, highlights, negatives,
+          bodyDescription: document.getElementById("fDesc").value.trim(),
+          description:     price ? price + " — " + priceType + ". " : ""
+        };
+
+        // Releer BD antes de guardar para no pisar cambios de otras fuentes
+        const freshDb  = await readDb();
+        let freshCars  = (Array.isArray(freshDb) ? freshDb : []).map(c => { if (!c.id) c.id = Date.now(); return c; });
+
+        if (editingId !== null) {
+          const idx = freshCars.findIndex(c => c.id === editingId);
+          if (idx !== -1) freshCars[idx] = car; else freshCars.unshift(car);
+        } else {
+          freshCars.unshift(car);
+        }
+
+        await writeDb(freshCars);
+        carsCache = freshCars;
+        renderList();
+        msgEl.textContent = editingId !== null ? "Carro actualizado." : "Carro agregado correctamente.";
+        msgEl.className = "amsg ok";
+        setTimeout(closeForm, 1200);
+      } catch (err) {
+        msgEl.textContent = err.message || "Error al guardar.";
+        msgEl.className = "amsg err";
+      }
+    });
+
+    /* ── Init ── */
+    if (isLogged()) showAdmin(); else showLogin();
+  </script>
+</body>
+</html>

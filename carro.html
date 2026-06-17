@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalle del carro – Auto XQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page-shell">
+
+    <nav class="site-nav">
+      <div class="nav-shell">
+        <a href="index.html" class="nav-brand">AUTO XQ</a>
+        <div class="nav-links">
+          <a href="index.html" class="nav-link">Inicio</a>
+          <a href="inventario.html" class="nav-link">Inventario</a>
+          <a href="index.html#contacto" class="nav-link">Contacto</a>
+        </div>
+        <a class="whatsapp-nav-btn" href="https://wa.me/50239784960" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      </div>
+    </nav>
+
+    <div class="car-page-wrapper" id="carPage">
+      <p class="car-loading">Cargando...</p>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true">
+      <button class="lightbox-close" id="lightboxClose" aria-label="Cerrar">&times;</button>
+      <button class="lightbox-prev" id="lightboxPrev" aria-label="Anterior">&#8592;</button>
+      <img class="lightbox-img" id="lightboxImg" src="" alt="">
+      <button class="lightbox-next" id="lightboxNext" aria-label="Siguiente">&#8594;</button>
+      <span class="lightbox-counter" id="lightboxCounter"></span>
+    </div>
+
+  </div>
+
+  <script>
+    const storageKey = "carros-page-inventory";
+    const dbName    = "carros-page-db";
+    const storeName = "inventario";
+
+    /* ── DB helpers ── */
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror  = () => reject(new Error("No se pudo abrir la base de datos."));
+      });
+    }
+
+    async function readInventoryFromDb() {
+      const db = await openDatabase();
+      return new Promise((resolve, reject) => {
+        const tx  = db.transaction(storeName, "readonly");
+        const req = tx.objectStore(storeName).get(storageKey);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(new Error("No se pudo leer el inventario."));
+      });
+    }
+
+    /* ── Helpers ── */
+    function parsePriceFromDescription(description) {
+      const match = description.match(/^(Q[\d,]+[^.]*)\.\s*/);
+      if (match) return { price: match[1].trim(), body: description.slice(match[0].length) };
+      return { price: null, body: description };
+    }
+
+    function getCarSpecs(car) {
+      if (car.specs) return car.specs;
+      if (car.name === "Toyota 4Runner 2014") {
+        return [
+          { label: "Año",          value: "2014" },
+          { label: "Version",      value: "SR5" },
+          { label: "Motor",        value: "V6 4.0L DOHC" },
+          { label: "Potencia",     value: "270 HP" },
+          { label: "Torque",       value: "278 lb-pie" },
+          { label: "Transmision",  value: "Automatica 5 vel." },
+          { label: "Traccion",     value: "4x2" },
+          { label: "Combustible",  value: "Gasolina" },
+          { label: "Pasajeros",    value: "5 – 7" },
+          { label: "Tanque",       value: "87 litros" },
+          { label: "Frenos",       value: "ABS" },
+          { label: "Remolque",     value: "Hasta 2,268 kg" }
+        ];
+      }
+      if (car.name === "Mazda 3 2005") {
+        return [
+          { label: "Año",         value: "2005" },
+          { label: "Color",       value: "Gris" },
+          { label: "Motor",       value: "2.3L DOHC" },
+          { label: "Cilindros",   value: "4 en linea" },
+          { label: "Transmision", value: "Automatica Tiptronic" },
+          { label: "Traccion",    value: "Delantera (FWD)" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Pasajeros",   value: "5" },
+          { label: "Direccion",   value: "Asistida" },
+          { label: "A/C",         value: "Si" }
+        ];
+      }
+      return [];
+    }
+
+    function getCarHighlights(car) {
+      if (car.highlights) return car.highlights;
+      if (car.name === "Toyota 4Runner 2014") {
+        return [
+          "Motor en excelente estado",
+          "Interior de cuero original",
+          "Llantas al 95% de vida",
+          "Aire acondicionado funcionando perfectamente",
+          "89,000 millas comprobables",
+          "Sin ningun check ni pendiente mecanico",
+          "Detalles menores de pintura exterior",
+          "Ideal para ciudad y viajes largos"
+        ];
+      }
+      if (car.name === "Mazda 3 2005") {
+        return [
+          "Motor 2.3L al 100%, sin humo ni corrosion",
+          "Transmision automatica Tiptronic",
+          "Suspension ajustada recientemente",
+          "Aire acondicionado funcionando correctamente",
+          "Interior espacioso para 5 pasajeros",
+          "Llantas con aprox. 50% de vida util",
+          "Economico de mantener, ideal para uso diario",
+          "Detalles esteticos de pintura en bumper y capo"
+        ];
+      }
+      return [];
+    }
+
+    /* ── Lightbox ── */
+    let lightboxImages = [];
+    let lightboxIndex  = 0;
+    const lightbox     = document.getElementById("lightbox");
+    const lightboxImg  = document.getElementById("lightboxImg");
+    const lightboxCnt  = document.getElementById("lightboxCounter");
+
+    function openLightbox(index) {
+      lightboxIndex = ((index % lightboxImages.length) + lightboxImages.length) % lightboxImages.length;
+      lightboxImg.src = lightboxImages[lightboxIndex];
+      lightboxCnt.textContent = (lightboxIndex + 1) + " / " + lightboxImages.length;
+      lightbox.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    function stepLightbox(delta) {
+      openLightbox(lightboxIndex + delta);
+    }
+
+    document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
+    document.getElementById("lightboxPrev").addEventListener("click", () => stepLightbox(-1));
+    document.getElementById("lightboxNext").addEventListener("click", () => stepLightbox(1));
+
+    lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
+
+    document.addEventListener("keydown", (e) => {
+      if (!lightbox.classList.contains("open")) return;
+      if (e.key === "Escape")      closeLightbox();
+      if (e.key === "ArrowLeft")   stepLightbox(-1);
+      if (e.key === "ArrowRight")  stepLightbox(1);
+    });
+
+    /* ── Render ── */
+    function renderCar(car) {
+      const carPage     = document.getElementById("carPage");
+      const statusClass = (car.status || "").toLowerCase() === "vendido" ? "sold" : "available";
+      const descParsed  = parsePriceFromDescription(car.description || "");
+      const displayPrice = car.price || descParsed.price;
+      const priceNote    = car.priceType || "Precio sujeto a negociacion";
+      const body         = descParsed.body;
+      const specs      = getCarSpecs(car);
+      const highlights = getCarHighlights(car);
+
+      lightboxImages = [car.mainImage, ...(car.secondaryImages || [])];
+
+      const galleryHTML = (car.secondaryImages || []).map((src, i) =>
+        `<img src="${src}" alt="Foto ${i + 1} de ${car.name}" loading="lazy" data-lb="${i + 1}">`
+      ).join("") || `<p style="color:var(--muted);grid-column:1/-1;padding:12px 0;">Sin fotos adicionales.</p>`;
+
+      const specsHTML = specs.map(s =>
+        `<div class="spec-item">
+          <span class="spec-item-label">${s.label}</span>
+          <span class="spec-item-value">${s.value}</span>
+        </div>`
+      ).join("");
+
+      const highlightsHTML = highlights.map(h => `<li>${h}</li>`).join("");
+
+      const priceBlock = displayPrice
+        ? `<span class="sidebar-label">Precio</span>
+           <p class="sidebar-price">${displayPrice}</p>
+           <p class="sidebar-price-note">${priceNote}</p>
+           <div class="sidebar-divider"></div>`
+        : "";
+
+      const negativesHTML = (car.negatives || []).map(n => `<li>${n}</li>`).join("");
+
+      const infoBlock = highlightsHTML
+        ? `<span class="sidebar-label">Puntos destacados</span>
+           <ul class="car-highlights">${highlightsHTML}</ul>`
+        : `<p class="sidebar-description">${body}</p>`;
+
+      const negativesBlock = negativesHTML
+        ? `<div class="sidebar-divider"></div>
+           <span class="sidebar-label">Detalles a considerar</span>
+           <ul class="car-negatives">${negativesHTML}</ul>`
+        : "";
+
+      const specsSection = specsHTML
+        ? `<div class="specs-section">
+             <h3 class="specs-section-title">Especificaciones tecnicas</h3>
+             <div class="car-specs-grid">${specsHTML}</div>
+           </div>`
+        : "";
+
+      carPage.innerHTML = `
+        <button class="car-back-btn" onclick="window.location.href='inventario.html'">&#8592; Volver al inventario</button>
+
+        <div class="car-page-hero">
+          <img src="${car.mainImage}" alt="${car.name}" data-lb="0" style="cursor:zoom-in;">
+          <div class="car-page-hero-footer">
+            <h1 class="car-page-name">${car.name}</h1>
+            <span class="car-page-status ${statusClass}">${car.status}</span>
+          </div>
+        </div>
+
+        <div class="car-page-body">
+          <div class="car-page-left">
+            ${car.bodyDescription ? `<p class="car-body-description">${car.bodyDescription}</p>` : ""}
+            <div class="car-page-gallery">${galleryHTML}</div>
+            ${specsSection}
+          </div>
+
+          <aside class="car-page-sidebar">
+            ${priceBlock}
+
+            <span class="sidebar-label">Vehiculo</span>
+            <h2 class="sidebar-car-name">${car.name}</h2>
+            <span class="sidebar-status ${statusClass}">${car.status}</span>
+
+            <div class="sidebar-divider"></div>
+            ${infoBlock}
+            ${negativesBlock}
+            <div class="sidebar-divider"></div>
+
+            <span class="sidebar-contact-label">Contacto</span>
+            <a class="contact-btn wa"
+               href="https://wa.me/50239784960?text=Hola%2C%20me%20interesa%20el%20${encodeURIComponent(car.name)}"
+               target="_blank" rel="noopener noreferrer">
+              Escribir por WhatsApp
+            </a>
+            <a class="contact-btn phone" href="tel:+50239784960">
+              Llamar: +502 3978 4960
+            </a>
+          </aside>
+        </div>
+      `;
+
+      document.title = car.name + " – Auto XQ";
+
+      carPage.querySelectorAll("[data-lb]").forEach(el => {
+        el.addEventListener("click", () => openLightbox(parseInt(el.dataset.lb, 10)));
+      });
+    }
+
+    function renderError(msg) {
+      const carPage = document.getElementById("carPage");
+      carPage.innerHTML =
+        `<p style="text-align:center;padding:80px 20px;color:var(--muted);">${msg}</p>
+         <div style="text-align:center;margin-top:16px;">
+           <a href="inventario.html" style="color:var(--blue);font-weight:700;">Volver al inventario</a>
+         </div>`;
+    }
+
+    async function init() {
+      try {
+        const cars = await readInventoryFromDb();
+        if (!Array.isArray(cars)) { renderError("No se pudo cargar."); return; }
+        const idParam = new URLSearchParams(window.location.search).get("id");
+        let car;
+        if (idParam) {
+          const numId = parseFloat(idParam);
+          car = cars.find(c => c.id === numId) || cars.find(c => c.name === "Toyota 4Runner 2014");
+        } else {
+          car = cars.find(c => c.name === "Toyota 4Runner 2014");
+        }
+        if (!car) { renderError("Carro no encontrado."); return; }
+        renderCar(car);
+      } catch (_) {
+        renderError("Error al cargar el carro.");
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
