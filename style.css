@@ -961,27 +961,45 @@ a {
     display: none;
   }
   .hero {
-    height: 240px;
+    height: 320px;
+  }
+  .hero-cta-block {
+    padding: 0 20px 36px;
+  }
+  .hero-cta-heading {
+    font-size: 2.2rem;
+    margin-bottom: 22px;
+  }
+  .hero-cta-btn {
+    padding: 15px 28px;
+    font-size: 0.92rem;
   }
   .car-page-wrapper {
-    padding: 24px 16px 60px;
+    padding: 20px 14px 60px;
   }
   .car-page-hero {
-    height: 260px;
-    border-radius: 20px;
+    height: 240px;
+    border-radius: 18px;
   }
   .car-page-hero-footer {
-    left: 20px;
-    bottom: 20px;
+    left: 18px;
+    bottom: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
   .car-page-name {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
   .car-page-gallery {
     grid-template-columns: repeat(2, 1fr);
   }
   .car-page-gallery img {
-    height: 120px;
+    height: 110px;
+    border-radius: 12px;
+  }
+  .car-specs-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
   .form-section,
   .inventory-section,
@@ -1002,5 +1020,47 @@ a {
   .footer-whatsapp {
     width: 100%;
     text-align: center;
+  }
+  .specs-section {
+    padding: 20px 18px;
+  }
+  .car-page-sidebar {
+    padding: 22px 18px;
+  }
+  .sidebar-price {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .nav-links {
+    display: none;
+  }
+  .hero {
+    height: 280px;
+  }
+  .hero-cta-heading {
+    font-size: 1.9rem;
+  }
+  .inventory-shell {
+    padding: 18px 14px;
+  }
+  .section-title h2 {
+    font-size: 1.8rem;
+  }
+  .car-page-gallery {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .car-specs-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .contact-btn {
+    padding: 14px;
+    font-size: 0.92rem;
+  }
+  .footer-shell {
+    padding: 28px 16px 24px;
   }
 }
