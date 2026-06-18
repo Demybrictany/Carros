@@ -357,6 +357,7 @@ a {
 
 .site-footer {
   padding: 0 52px 52px;
+  margin-top: 60px;
   background: linear-gradient(180deg, transparent 0%, #ebe7e0 100%);
 }
 
@@ -446,6 +447,54 @@ a {
   font-weight: 800;
   white-space: nowrap;
 }
+
+.footer-main-grid {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 28px;
+  margin-bottom: 32px;
+}
+
+.footer-brand-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-brand {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.footer-brand-col p {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.footer-wa-inline {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--whatsapp);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: opacity 0.15s;
+}
+
+.footer-wa-inline:hover { opacity: 0.8; }
+
+.footer-column a {
+  display: block;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.9rem;
+  margin-bottom: 9px;
+  transition: color 0.15s;
+}
+
+.footer-column a:hover { color: #ffffff; }
 
 /* ── Lightbox ─────────────────────────────────────── */
 
@@ -902,6 +951,9 @@ a {
   .footer-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .footer-main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
   .car-page-body {
     grid-template-columns: 1fr;
   }
@@ -1035,6 +1087,9 @@ a {
 @media (max-width: 420px) {
   .nav-links {
     display: none;
+  }
+  .footer-main-grid {
+    grid-template-columns: 1fr;
   }
   .hero {
     height: 280px;
