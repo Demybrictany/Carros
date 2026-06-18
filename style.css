@@ -293,6 +293,11 @@ a {
 
 .inventory-section {
   padding-bottom: 70px;
+  padding-top: 8px;
+}
+
+.inventory-section .section-title {
+  padding-bottom: 20px;
 }
 
 .form-section {
@@ -351,18 +356,19 @@ a {
 }
 
 .view-details-btn {
-  border: 0;
+  border: 1.5px solid rgba(201, 162, 39, 0.55);
   border-radius: 999px;
   padding: 10px 14px;
-  background: var(--blue);
-  color: #fff;
+  background: rgba(201, 162, 39, 0.08);
+  color: var(--gold);
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .view-details-btn:hover {
-  opacity: 0.85;
+  background: rgba(201, 162, 39, 0.18);
+  border-color: var(--gold);
 }
 
 /* ── Why Section ────────────────────────────────── */
