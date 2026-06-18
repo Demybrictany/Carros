@@ -17,7 +17,7 @@
         <a href="index.html" class="nav-brand">AUTO XQ</a>
         <div class="nav-links">
           <a href="index.html" class="nav-link">Inicio</a>
-          <a href="#contacto" class="nav-link">Contacto</a>
+          <a href="inventario.html" class="nav-link">Inventario</a>
         </div>
         <a class="whatsapp-nav-btn" href="https://wa.me/50239784960" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       </div>
@@ -27,51 +27,336 @@
       <div class="hero-cta-block">
         <span class="hero-cta-label">Quetzaltenango, Guatemala</span>
         <h1 class="hero-cta-heading">Encuentra tu<br>proximo vehiculo.</h1>
-        <a href="inventario.html" class="hero-cta-btn">Ver inventario →</a>
       </div>
     </header>
 
-    <footer id="contacto" class="site-footer">
-      <div class="footer-shell">
-        <div class="footer-intro">
-          <span class="footer-label">Empresa</span>
-          <h2>Tu proximo vehiculo con respaldo, confianza y atencion personalizada.</h2>
-          <p>
-            Trabajamos para ofrecer vehiculos disponibles en buen estado, con informacion clara,
-            acompanamiento en el proceso de compra y gestion de contrato y traspaso.
-          </p>
-        </div>
-
-        <div class="footer-grid">
-          <div class="footer-column">
-            <h3>Contacto</h3>
-            <p>Telefono: +502 3978 4960</p>
-            <p>WhatsApp directo disponible</p>
-            <p>Ubicacion: Quetzaltenango, Guatemala</p>
+    <main class="main-content">
+      <section class="inventory-section">
+        <div class="section-card inventory-shell">
+          <div class="section-title">
+            <h2>Carros publicados</h2>
+            <p>Selecciona un carro para ver todos los detalles.</p>
           </div>
-          <div class="footer-column">
-            <h3>Horario</h3>
-            <p>Lunes a viernes: 8:00 AM – 6:00 PM</p>
-            <p>Sabado: 8:00 AM – 3:00 PM</p>
-            <p>Domingo: Atencion con cita previa</p>
-          </div>
-          <div class="footer-column">
-            <h3>Servicios</h3>
-            <p>Venta de vehiculos disponibles</p>
-            <p>Revision de unidades publicadas</p>
-            <p>Apoyo con contrato y traspaso</p>
-          </div>
+          <div class="inventory-grid" id="inventoryGrid"></div>
         </div>
-
-        <div class="footer-bottom">
-          <p>Inventario de carros en Quetzaltenango. Atencion responsable, informacion clara y proceso seguro.</p>
-          <a class="footer-whatsapp" href="https://wa.me/50239784960" target="_blank" rel="noopener noreferrer">
-            Contactar por WhatsApp
-          </a>
-        </div>
-      </div>
-    </footer>
+      </section>
+    </main>
 
   </div>
+
+  <template id="carCardTemplate">
+    <article class="car-card">
+      <img class="car-main-image" src="" alt="">
+      <div class="car-card-body">
+        <h3 class="car-title"></h3>
+        <p class="car-status-text"></p>
+        <button class="view-details-btn" type="button">Ver informacion</button>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const defaultCars = [
+      {
+        id: 1001,
+        name: "Toyota 4Runner 2014",
+        status: "Disponible",
+        price: "Q140,000",
+        priceType: "Negociable",
+        mainImage: "imagenes/Secundaria1.png",
+        secondaryImages: [
+          "imagenes/Enfrente1.jpeg",
+          "imagenes/Carro1.jpeg",
+          "imagenes/Foto1.jpeg",
+          "imagenes/Detras1.jpeg",
+          "imagenes/Baul1.jpeg",
+          "imagenes/Timon.jpeg"
+        ],
+        specs: [
+          { label: "Año",         value: "2014" },
+          { label: "Version",     value: "SR5" },
+          { label: "Motor",       value: "V6 4.0L DOHC" },
+          { label: "Potencia",    value: "270 HP" },
+          { label: "Torque",      value: "278 lb-pie" },
+          { label: "Transmision", value: "Automatica 5 vel." },
+          { label: "Traccion",    value: "4x2" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Pasajeros",   value: "5 - 7" },
+          { label: "Tanque",      value: "87 litros" },
+          { label: "Frenos",      value: "ABS" },
+          { label: "Remolque",    value: "Hasta 2,268 kg" }
+        ],
+        highlights: [
+          "Motor en excelente estado",
+          "Interior de cuero original",
+          "Llantas al 95% de vida",
+          "Aire acondicionado funcionando perfectamente",
+          "89,000 millas comprobables",
+          "Sin ningun check ni pendiente mecanico",
+          "Detalles menores de pintura exterior",
+          "Ideal para ciudad y viajes largos"
+        ],
+        description: "Q140,000 — Negociable. SUV robusta en excelente estado general."
+      },
+      {
+        id: 1002,
+        name: "Mazda 3 2005",
+        status: "Disponible",
+        price: "Q20,000",
+        priceType: "Precio fijo",
+        mainImage: "imagenes/Secundaria2.jfif",
+        secondaryImages: [
+          "imagenes/Baul2.jfif",
+          "imagenes/Baul2.1.jfif",
+          "imagenes/Capo2.jfif",
+          "imagenes/Motor2.jfif",
+          "imagenes/Volante2.jfif"
+        ],
+        specs: [
+          { label: "Año",         value: "2005" },
+          { label: "Color",       value: "Gris" },
+          { label: "Motor",       value: "2.3L DOHC" },
+          { label: "Cilindros",   value: "4 en linea" },
+          { label: "Transmision", value: "Automatica Tiptronic" },
+          { label: "Traccion",    value: "Delantera (FWD)" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Pasajeros",   value: "5" },
+          { label: "Direccion",   value: "Asistida" },
+          { label: "A/C",         value: "Si" }
+        ],
+        highlights: [
+          "Motor 2.3L al 100%, sin humo ni corrosion",
+          "Transmision automatica Tiptronic",
+          "Suspension ajustada recientemente",
+          "Aire acondicionado funcionando correctamente",
+          "Interior espacioso para 5 pasajeros",
+          "Llantas con aprox. 50% de vida util",
+          "Economico de mantener, ideal para uso diario",
+          "Detalles esteticos de pintura en bumper y capo"
+        ],
+        description: "Q20,000 — Precio fijo. Mazda 3 Sedan 2005 color gris."
+      },
+      {
+        id: 1003,
+        name: "Toyota Tercel 1994",
+        status: "Disponible",
+        price: "Q20,000",
+        priceType: "Poco negociable",
+        mainImage: "imagenes/Toyota Tercel 1994.jpeg",
+        secondaryImages: [],
+        bodyDescription: "Toyota Tercel 1994 de 2 puertas, equipado con motor 1.5L y transmision mecanica. Vehiculo economico y confiable, ideal para uso diario. Cuenta con aire acondicionado, suspension en buenas condiciones y llantas con aproximadamente 70% de vida util.",
+        specs: [
+          { label: "Marca",       value: "Toyota" },
+          { label: "Modelo",      value: "Tercel" },
+          { label: "Motor",       value: "1.5L" },
+          { label: "Cilindros",   value: "4 en linea" },
+          { label: "Transmision", value: "Mecanica" },
+          { label: "Direccion",   value: "Asistida" },
+          { label: "Combustible", value: "Gasolina" }
+        ],
+        highlights: [
+          "Motor 1.5L economico y confiable",
+          "Caja mecanica en excelente estado",
+          "Suspension en buenas condiciones",
+          "Aire acondicionado equipado",
+          "Llantas con 70% de vida util",
+          "Vehiculo ligero y economico de mantener",
+          "Modificaciones esteticas deportivas"
+        ],
+        negatives: [
+          "Detalles de pintura en distintas areas",
+          "Rayones y desgaste estetico por uso",
+          "Modificaciones visuales realizadas por propietario anterior"
+        ],
+        description: "Q20,000 — Poco negociable."
+      },
+      {
+        id: 1004,
+        name: "Nissan Sentra 2.0",
+        status: "Disponible",
+        price: "Q24,000",
+        priceType: "Poco negociable",
+        mainImage: "imagenes/Nissan Sentra 2.0.png",
+        secondaryImages: [],
+        bodyDescription: "Nissan Sentra equipado con motor 2.0L y transmision automatica. Vehiculo comodo, economico y confiable para uso diario. Motor, caja y suspension en excelente estado de funcionamiento.",
+        specs: [
+          { label: "Marca",       value: "Nissan" },
+          { label: "Modelo",      value: "Sentra" },
+          { label: "Motor",       value: "2.0L" },
+          { label: "Transmision", value: "Automatica" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Direccion",   value: "Asistida" }
+        ],
+        highlights: [
+          "Motor 2.0L en excelente estado",
+          "Caja automatica funcionando al 100%",
+          "Suspension en optimas condiciones",
+          "Aire acondicionado funcionando correctamente",
+          "Vehiculo economico de mantener",
+          "Ideal para uso diario y familiar"
+        ],
+        negatives: [
+          "Rayones visibles en la pintura",
+          "Actualmente cuenta con 3 aros instalados",
+          "Desgaste estetico normal por uso",
+          "Se recomienda inspeccion visual para verificar detalles cosmeticos"
+        ],
+        description: "Q24,000 — Poco negociable."
+      },
+      {
+        id: 1005,
+        name: "Honda Pilot EX-L 2013",
+        status: "Disponible",
+        price: "Q65,000",
+        priceType: "Poco negociable",
+        mainImage: "imagenes/Honda Pilot EX-L 2013.png",
+        secondaryImages: [],
+        bodyDescription: "Honda Pilot 2013 equipada con motor 3.5L V6 y transmision automatica. Vehiculo espacioso y comodo para toda la familia, ideal para uso diario o viajes largos.",
+        specs: [
+          { label: "Marca",       value: "Honda" },
+          { label: "Modelo",      value: "Pilot EX-L" },
+          { label: "Motor",       value: "3.5L V6" },
+          { label: "Transmision", value: "Automatica" },
+          { label: "Combustible", value: "Gasolina" },
+          { label: "Pasajeros",   value: "8" }
+        ],
+        highlights: [],
+        negatives: [],
+        description: "Q65,000 — Poco negociable."
+      },
+    ];
+
+    const storageKey = "carros-page-inventory";
+    const dbName    = "carros-page-db";
+    const storeName = "inventario";
+    const inventoryGrid = document.getElementById("inventoryGrid");
+    const template      = document.getElementById("carCardTemplate");
+    let carsCache = [];
+
+    function shouldRemoveCar(car) {
+      const name = (car?.name || "").trim().toLowerCase();
+      if (name === "yaris" || name === "hola") return true;
+      if ((car?.mainImage || "").includes("unsplash.com")) return true;
+      return false;
+    }
+
+    function sanitizeCars(cars) {
+      if (!Array.isArray(cars)) return [];
+      return cars.filter((car) => !shouldRemoveCar(car));
+    }
+
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror  = () => reject(new Error("No se pudo abrir la base de datos del navegador."));
+      });
+    }
+
+    async function readInventoryFromDb() {
+      const db = await openDatabase();
+      return new Promise((resolve, reject) => {
+        const tx  = db.transaction(storeName, "readonly");
+        const req = tx.objectStore(storeName).get(storageKey);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(new Error("No se pudo leer el inventario guardado."));
+      });
+    }
+
+    async function writeInventoryToDb(cars) {
+      const db = await openDatabase();
+      return new Promise((resolve, reject) => {
+        const tx  = db.transaction(storeName, "readwrite");
+        const req = tx.objectStore(storeName).put(cars, storageKey);
+        req.onsuccess = () => resolve();
+        req.onerror   = () => reject(new Error("No se pudo guardar el inventario."));
+      });
+    }
+
+    async function loadCars() {
+      const savedCars = await readInventoryFromDb();
+      if (Array.isArray(savedCars) && savedCars.length > 0) {
+        let cleaned = sanitizeCars(savedCars);
+        let needsSave = false;
+
+        cleaned = cleaned.map(car => {
+          const def = defaultCars.find(d => d.name === car.name);
+          if (!car.id) {
+            car.id = def ? def.id : Date.now();
+            needsSave = true;
+          }
+          if (def) {
+            if (!car.specs      && def.specs)      { car.specs      = def.specs;      needsSave = true; }
+            if (!car.highlights && def.highlights)  { car.highlights = def.highlights; needsSave = true; }
+            if (!car.price      && def.price)      { car.price      = def.price;      needsSave = true; }
+            if (!car.priceType  && def.priceType)  { car.priceType  = def.priceType;  needsSave = true; }
+          }
+          return car;
+        });
+
+        const missing = defaultCars.filter(def => !cleaned.some(c => c.name === def.name));
+        if (missing.length > 0) {
+          cleaned = [...missing, ...cleaned];
+          needsSave = true;
+        } else if (cleaned.length !== savedCars.length) {
+          needsSave = true;
+        }
+        if (needsSave) await writeInventoryToDb(cleaned);
+        carsCache = cleaned;
+        return cleaned;
+      }
+
+      const legacy = localStorage.getItem(storageKey);
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleaned = sanitizeCars(parsed);
+            await writeInventoryToDb(cleaned);
+            localStorage.removeItem(storageKey);
+            carsCache = cleaned;
+            return cleaned;
+          }
+        } catch (_) {
+          localStorage.removeItem(storageKey);
+        }
+      }
+
+      const defaults = sanitizeCars(defaultCars);
+      await writeInventoryToDb(defaults);
+      carsCache = defaults;
+      return defaults;
+    }
+
+    async function renderCars() {
+      const cars = await loadCars();
+      inventoryGrid.innerHTML = "";
+
+      cars.forEach((car) => {
+        const card      = template.content.cloneNode(true);
+        const img       = card.querySelector(".car-main-image");
+        const title     = card.querySelector(".car-title");
+        const statusTxt = card.querySelector(".car-status-text");
+        const btn       = card.querySelector(".view-details-btn");
+
+        img.src               = car.mainImage;
+        img.alt               = car.name;
+        title.textContent     = car.name;
+        statusTxt.textContent = car.status;
+
+        btn.addEventListener("click", () => {
+          window.location.href = "carro.html?id=" + car.id;
+        });
+
+        inventoryGrid.appendChild(card);
+      });
+    }
+
+    renderCars().catch(console.error);
+  </script>
 </body>
 </html>
