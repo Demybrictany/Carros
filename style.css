@@ -368,9 +368,9 @@ a {
 
 .footer-main-grid {
   display: grid;
-  grid-template-columns: 1.4fr repeat(3, 1fr);
+  grid-template-columns: 1.6fr 1fr;
   gap: 52px;
-  padding-bottom: 52px;
+  padding-bottom: 40px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -922,9 +922,6 @@ a {
   .footer-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .footer-main-grid {
-    grid-template-columns: 1fr 1fr;
-  }
   .car-page-body {
     grid-template-columns: 1fr;
   }
@@ -1037,21 +1034,24 @@ a {
   .section-title h2 {
     font-size: 2.1rem;
   }
-  .footer-grid {
-    grid-template-columns: 1fr;
+  .site-footer {
+    padding: 32px 18px 0;
+    margin-top: 36px;
   }
   .footer-main-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 28px;
-  }
-  .site-footer {
-    padding-left: 20px;
-    padding-right: 20px;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding-bottom: 24px;
   }
   .footer-bottom {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 14px;
+    padding: 18px 0 24px;
+  }
+  .footer-whatsapp {
+    width: 100%;
+    justify-content: center;
   }
   .specs-section {
     padding: 20px 18px;
@@ -1067,10 +1067,6 @@ a {
 @media (max-width: 420px) {
   .nav-links {
     display: none;
-  }
-  .footer-main-grid {
-    grid-template-columns: 1fr;
-    gap: 24px;
   }
   .hero {
     height: 280px;
