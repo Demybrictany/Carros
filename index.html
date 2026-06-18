@@ -373,11 +373,7 @@
           return car;
         });
 
-        const missing = defaultCars.filter(def => !cleaned.some(c => c.name === def.name));
-        if (missing.length > 0) {
-          cleaned = [...missing, ...cleaned];
-          needsSave = true;
-        } else if (cleaned.length !== savedCars.length) {
+        if (cleaned.length !== savedCars.length) {
           needsSave = true;
         }
         if (needsSave) await writeInventoryToDb(cleaned);
