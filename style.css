@@ -51,7 +51,7 @@ a {
 
 .site-nav {
   background: #07111a;
-  padding: 0 52px;
+  padding: 0 24px;
 }
 
 .nav-shell {
@@ -125,7 +125,7 @@ a {
 .hero-cta-block {
   position: relative;
   z-index: 1;
-  padding: 0 52px 56px;
+  padding: 0 28px 48px;
 }
 
 .hero-cta-label {
@@ -178,7 +178,7 @@ a {
 
 .form-section,
 .inventory-section {
-  padding: 0 52px;
+  padding: 0 24px;
 }
 
 .section-card {
@@ -356,13 +356,13 @@ a {
 /* ── Why Section ────────────────────────────────── */
 
 .why-section {
-  padding: 32px 52px 0;
+  padding: 24px 24px 0;
 }
 
 .why-shell {
   background: #ffffff;
   border-radius: var(--radius-xl);
-  padding: 52px 48px;
+  padding: 44px 36px;
   box-shadow: var(--shadow);
 }
 
@@ -400,10 +400,10 @@ a {
 }
 
 .why-icon {
-  width: 40px;
-  height: 40px;
+  width: 26px;
+  height: 26px;
   color: #7ea8ff;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .why-card h3 {
@@ -425,7 +425,7 @@ a {
 .site-footer {
   background: #07111a;
   margin-top: 60px;
-  padding: 56px 52px 0;
+  padding: 48px 24px 0;
   color: #fff;
 }
 
@@ -622,7 +622,7 @@ a {
 /* ── Pagina de detalle del carro ─────────────────── */
 
 .car-page-wrapper {
-  padding: 36px 52px 80px;
+  padding: 36px 24px 80px;
 }
 
 .car-back-btn {
@@ -975,23 +975,11 @@ a {
 }
 
 @media (max-width: 1024px) {
-  .site-nav,
-  .form-section,
-  .inventory-section,
-  .site-footer,
-  .car-page-wrapper {
-    padding-left: 28px;
-    padding-right: 28px;
-  }
   .inventory-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .why-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .why-section {
-    padding-left: 28px;
-    padding-right: 28px;
   }
   .car-page-body {
     grid-template-columns: 1fr;
@@ -1002,13 +990,9 @@ a {
 }
 
 @media (max-width: 820px) {
-  .site-nav,
-  .form-section,
-  .inventory-section,
-  .site-footer,
-  .car-page-wrapper {
-    padding-left: 20px;
-    padding-right: 20px;
+  .why-section {
+    padding-left: 14px;
+    padding-right: 14px;
   }
   .hero {
     height: 360px;
@@ -1045,10 +1029,6 @@ a {
 }
 
 @media (max-width: 640px) {
-  .site-nav {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
   .nav-shell {
     height: 56px;
   }
@@ -1096,19 +1076,12 @@ a {
   .car-specs-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .form-section,
-  .inventory-section,
-  .why-section,
-  .site-footer {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
   .why-shell {
-    padding: 32px 22px;
+    padding: 28px 18px;
   }
   .why-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px;
   }
   .section-title h2 {
     font-size: 2.1rem;
