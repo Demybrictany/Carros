@@ -316,41 +316,26 @@
     const ADMIN_USER = "Programador1";
     const ADMIN_PASS = "Auto369precio";
 
-    /* ── DB ── */
-    const storageKey = "carros-page-inventory";
-    const dbName     = "carros-page-db";
-    const storeName  = "inventario";
+    /* ── DB (JSONBin — sincroniza entre dispositivos) ── */
+    const BIN_ID     = "6a356040f5f4af5e290fcf56";
+    const MASTER_KEY = "$2a$10$FyLaTG6caTU5xPQSNkUzT.Al/dst601iPSmxSSlgfdEl9k0sUgBju";
     let carsCache       = [];
     let editingId       = null;
     let secImagesArr    = [];
 
-    function openDb() {
-      return new Promise((res, rej) => {
-        const req = indexedDB.open(dbName, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
-        };
-        req.onsuccess = () => res(req.result);
-        req.onerror   = () => rej(new Error("Error al abrir DB"));
-      });
-    }
-
     async function readDb() {
-      const db = await openDb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(storeName, "readonly").objectStore(storeName).get(storageKey);
-        req.onsuccess = () => res(req.result || []);
-        req.onerror   = () => rej(new Error("Error al leer DB"));
+      const res  = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+        headers: { "X-Master-Key": MASTER_KEY }
       });
+      const data = await res.json();
+      return Array.isArray(data.record?.cars) ? data.record.cars : [];
     }
 
     async function writeDb(cars) {
-      const db = await openDb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(storeName, "readwrite").objectStore(storeName).put(cars, storageKey);
-        req.onsuccess = () => res();
-        req.onerror   = () => rej(new Error("Error al guardar DB"));
+      await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+        body:    JSON.stringify({ cars })
       });
     }
 
