@@ -25,7 +25,7 @@
 body {
   font-family: "Manrope", sans-serif;
   background:
-    linear-gradient(rgba(13,11,8,0.58), rgba(13,11,8,0.58)),
+    linear-gradient(rgba(13,11,8,0.45), rgba(13,11,8,0.45)),
     url('imagenes/FondoPagina.png') center top / cover no-repeat fixed;
   color: var(--text);
 }
@@ -216,9 +216,10 @@ a {
 
 .section-title p {
   margin-top: 14px;
-  color: var(--muted);
+  color: var(--text);
   max-width: 620px;
   line-height: 1.6;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
 /* ── Form ──────────────────────────────────────── */
@@ -352,9 +353,10 @@ a {
 }
 
 .car-status-text {
-  color: rgba(255, 255, 255, 0.65);
+  color: #fff;
   font-size: 0.88rem;
   font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
 }
 
 .view-details-btn {
@@ -400,11 +402,12 @@ a {
 }
 
 .why-header p {
-  color: var(--muted);
+  color: var(--text);
   font-size: 0.95rem;
   max-width: 460px;
   margin: 0 auto;
   line-height: 1.65;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
 .why-grid {
@@ -652,7 +655,7 @@ a {
   align-items: center;
   gap: 8px;
   margin-bottom: 28px;
-  color: var(--muted);
+  color: var(--text);
   font-size: 0.92rem;
   font-weight: 700;
   background: none;
@@ -660,6 +663,7 @@ a {
   cursor: pointer;
   padding: 0;
   transition: color 0.15s;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
 .car-back-btn:hover {
@@ -901,7 +905,7 @@ a {
 .car-body-description {
   font-size: 0.95rem;
   line-height: 1.75;
-  color: var(--muted);
+  color: var(--text);
   padding: 20px 0 4px;
   border-bottom: 1px solid var(--line);
   margin-bottom: 8px;
@@ -982,8 +986,9 @@ a {
 .car-loading {
   text-align: center;
   padding: 80px 20px;
-  color: var(--muted);
+  color: var(--text);
   font-size: 1.1rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
 /* ── Responsive ────────────────────────────────── */
@@ -1207,7 +1212,7 @@ a {
 @media (max-width: 480px) {
   body {
     background:
-      linear-gradient(rgba(13,11,8,0.58), rgba(13,11,8,0.58)),
+      linear-gradient(rgba(13,11,8,0.45), rgba(13,11,8,0.45)),
       url('Imagenes/FondoPrincipalTelefono.png') center top / cover no-repeat scroll;
   }
 }
