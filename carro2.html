@@ -90,10 +90,23 @@
     ];
 
     async function readInventoryFromDb() {
-      const res = await fetch("/data/cars.json?_=" + Date.now());
-      if (!res.ok) throw new Error("No se pudo cargar el inventario.");
-      const data = await res.json();
-      return Array.isArray(data.cars) ? data.cars : null;
+      // 1. data/cars.json (GitHub)
+      try {
+        const res = await fetch("/data/cars.json?_=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.cars)) return data.cars;
+        }
+      } catch(_) {}
+      // 2. JSONBin fallback
+      try {
+        const res = await fetch("https://api.jsonbin.io/v3/b/6a356040f5f4af5e290fcf56/latest");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.record?.cars)) return data.record.cars;
+        }
+      } catch(_) {}
+      return null;
     }
 
     /* ── Lightbox ── */

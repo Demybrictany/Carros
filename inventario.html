@@ -261,16 +261,27 @@
     }
 
     async function loadCars() {
+      // 1. data/cars.json (GitHub - fuente primaria)
       try {
         const res = await fetch("/data/cars.json?_=" + Date.now());
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.cars) && data.cars.length > 0) {
-            carsCache = sanitizeCars(data.cars);
-            return carsCache;
+            carsCache = sanitizeCars(data.cars); return carsCache;
           }
         }
       } catch(_) {}
+      // 2. JSONBin (fallback - se actualiza sin token)
+      try {
+        const res = await fetch("https://api.jsonbin.io/v3/b/6a356040f5f4af5e290fcf56/latest");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.record?.cars) && data.record.cars.length > 0) {
+            carsCache = sanitizeCars(data.record.cars); return carsCache;
+          }
+        }
+      } catch(_) {}
+      // 3. Datos por defecto
       carsCache = sanitizeCars(defaultCars);
       return carsCache;
     }

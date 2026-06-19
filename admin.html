@@ -316,36 +316,68 @@
     const ADMIN_USER = "Programador1";
     const ADMIN_PASS = "Auto369precio";
 
-    /* ── DB: lee/escribe data/cars.json via GitHub ── */
+    /* ── DB: GitHub (primario) + JSONBin (fallback) ── */
+    const BIN_URL = "https://api.jsonbin.io/v3/b/6a356040f5f4af5e290fcf56/latest";
     let carsCache    = [];
     let editingId    = null;
     let secImagesArr = []; // File objects o strings (rutas existentes)
     let pendingMainFile = null;
 
     async function readDb() {
+      // 1. Leer data/cars.json (fuente de GitHub - mas actualizada)
       try {
         const res = await fetch("/data/cars.json?_=" + Date.now());
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data.cars)) return data.cars;
+          if (Array.isArray(data.cars) && data.cars.length > 0) return data.cars;
+        }
+      } catch(_) {}
+      // 2. Fallback: leer de JSONBin
+      try {
+        const res = await fetch(BIN_URL);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.record?.cars) && data.record.cars.length > 0) return data.record.cars;
         }
       } catch(_) {}
       return [];
     }
 
     async function writeDb(cars) {
+      // Intentar GitHub primero
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ type: "save-cars", cars })
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Error al guardar (codigo " + res.status + ")");
+      if (res.ok) return;
+
+      const err = await res.json().catch(() => ({}));
+
+      // Si no hay GITHUB_TOKEN, usar JSONBin como fallback automatico
+      if (err.error?.includes("GITHUB_TOKEN")) {
+        const carsForBin = cars.map(c => ({
+          ...c,
+          // Mantener imagenes pequeñas (rutas o base64 pequeño), quitar base64 grandes
+          mainImage:       c.mainImage?.length > 60000 ? null : c.mainImage,
+          secondaryImages: (c.secondaryImages || []).filter(s => !s?.startsWith("data:") || s.length < 60000)
+        }));
+        const res2 = await fetch("/.netlify/functions/save-cars", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ type: "save-jsonbin", cars: carsForBin })
+        });
+        if (!res2.ok) {
+          const e2 = await res2.json().catch(() => ({}));
+          throw new Error(e2.error || "Error al guardar");
+        }
+        return; // guardado en JSONBin OK
       }
+
+      throw new Error(err.error || "Error al guardar (" + res.status + ")");
     }
 
-    function compressImage(file) {
+    function compressImage(file, maxW = 1200, quality = 0.78) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onerror = () => reject(new Error("Error al leer imagen"));
@@ -353,13 +385,12 @@
           const img = new Image();
           img.onerror = () => reject(new Error("Error al procesar imagen"));
           img.onload  = () => {
-            const MAX = 1200;
             let w = img.naturalWidth, h = img.naturalHeight;
-            if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+            if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
             const canvas = document.createElement("canvas");
             canvas.width = w; canvas.height = h;
             canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL("image/jpeg", 0.78));
+            resolve(canvas.toDataURL("image/jpeg", quality));
           };
           img.src = e.target.result;
         };
@@ -368,19 +399,24 @@
     }
 
     async function uploadImage(file) {
-      const base64   = await compressImage(file);
-      const safeName = Date.now() + "_" + file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+      // Intentar subir a GitHub (si hay token)
+      const base64Full = await compressImage(file, 1200, 0.78);
+      const safeName   = Date.now() + "_" + file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ type: "upload-image", filename: safeName, base64 })
+        body:    JSON.stringify({ type: "upload-image", filename: safeName, base64: base64Full })
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Error al subir imagen");
+      if (res.ok) {
+        const data = await res.json();
+        return data.path; // ruta de archivo en el repo
       }
-      const data = await res.json();
-      return data.path; // "imagenes/timestamp_nombre.jpg"
+      const err = await res.json().catch(() => ({}));
+      // Sin token: devolver base64 comprimido pequeño (para JSONBin)
+      if (err.error?.includes("GITHUB_TOKEN")) {
+        return await compressImage(file, 320, 0.5);
+      }
+      throw new Error(err.error || "Error al subir imagen");
     }
 
     function escH(s) {
@@ -793,7 +829,7 @@
         await writeDb(updated);
         carsCache = updated;
         renderList();
-        msgEl.textContent = "¡Guardado! La pagina se actualiza en ~30 segundos en todos los dispositivos.";
+        msgEl.textContent = "¡Guardado! Se actualiza en todos los dispositivos.";
         msgEl.className = "amsg ok";
         setTimeout(closeForm, 2800);
       } catch (err) {
