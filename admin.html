@@ -317,87 +317,49 @@
     const ADMIN_PASS = "Auto369precio";
 
     /* ── DB ── */
-    const BIN_ID    = "6a356040f5f4af5e290fcf56";
-    const IDB_NAME  = "carros-page-db";
-    const IDB_STORE = "inventario";
-    const IDB_KEY   = "carros-page-inventory";
-    let carsCache    = [];
-    let editingId    = null;
-    let secImagesArr = [];
+    const storageKey = "carros-page-inventory";
+    const dbName     = "carros-page-db";
+    const storeName  = "inventario";
+    let carsCache       = [];
+    let editingId       = null;
+    let secImagesArr    = [];
 
-    /* IndexedDB — guarda fotos secundarias en este dispositivo */
-    function openIdb() {
+    function openDb() {
       return new Promise((res, rej) => {
-        const req = indexedDB.open(IDB_NAME, 1);
-        req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE); };
+        const req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+        };
         req.onsuccess = () => res(req.result);
-        req.onerror   = () => rej(req.error);
-      });
-    }
-    async function idbRead() {
-      const db = await openIdb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(IDB_STORE,"readonly").objectStore(IDB_STORE).get(IDB_KEY);
-        req.onsuccess = () => res(req.result || []);
-        req.onerror   = () => rej(req.error);
-      });
-    }
-    async function idbWrite(cars) {
-      const db = await openIdb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).put(cars, IDB_KEY);
-        req.onsuccess = () => res();
-        req.onerror   = () => rej(req.error);
+        req.onerror   = () => rej(new Error("Error al abrir DB"));
       });
     }
 
-    /* JSONBin guarda todo menos fotos secundarias; IndexedDB guarda todo */
     async function readDb() {
-      const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-      const data   = await res.json();
-      const remote = Array.isArray(data.record?.cars) ? data.record.cars : [];
-      const local  = await idbRead();
-      return remote.map(rcar => {
-        const lcar = local.find(l => l.id === rcar.id);
-        return { ...rcar, secondaryImages: lcar?.secondaryImages?.length ? lcar.secondaryImages : (rcar.secondaryImages || []) };
+      const db = await openDb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(storeName, "readonly").objectStore(storeName).get(storageKey);
+        req.onsuccess = () => res(req.result || []);
+        req.onerror   = () => rej(new Error("Error al leer DB"));
       });
     }
 
     async function writeDb(cars) {
-      await idbWrite(cars);
-      const forBin = cars.map(c => ({ ...c, secondaryImages: [] }));
-      const res = await fetch("/.netlify/functions/save-cars", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ cars: forBin })
+      const db = await openDb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(storeName, "readwrite").objectStore(storeName).put(cars, storageKey);
+        req.onsuccess = () => res();
+        req.onerror   = () => rej(new Error("Error al guardar DB"));
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error("Error al guardar (" + res.status + "): " + txt);
-      }
     }
 
-    /* Comprime foto principal pequena para JSONBin (~5-8KB) */
-    function readFile(file, forMain = false) {
+    function readFile(file) {
       return new Promise((res, rej) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          const MAX = forMain ? 480 : 900;
-          const Q   = forMain ? 0.38 : 0.55;
-          let w = img.naturalWidth, h = img.naturalHeight;
-          if (w > MAX || h > MAX) {
-            if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
-            else        { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = w; canvas.height = h;
-          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          URL.revokeObjectURL(url);
-          res(canvas.toDataURL("image/jpeg", Q));
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Error al leer imagen")); };
-        img.src = url;
+        const r = new FileReader();
+        r.onload  = () => res(r.result);
+        r.onerror = () => rej(new Error("Error al leer imagen"));
+        r.readAsDataURL(file);
       });
     }
 
@@ -630,7 +592,7 @@
     document.getElementById("fMain").addEventListener("change", async e => {
       const f = e.target.files[0]; if (!f) return;
       const prev = document.getElementById("prevMain");
-      prev.src = await readFile(f, true);
+      prev.src = await readFile(f);
       prev.classList.add("on");
     });
 
@@ -643,9 +605,12 @@
         const img = document.createElement("img");
         img.src = src;
         const del = document.createElement("button");
-        del.type = "button"; del.className = "sec-thumb-del"; del.textContent = "×";
+        del.type = "button";
+        del.className = "sec-thumb-del";
+        del.textContent = "×";
         del.addEventListener("click", () => { secImagesArr.splice(i, 1); renderSecPreviews(); });
-        wrap.appendChild(img); wrap.appendChild(del);
+        wrap.appendChild(img);
+        wrap.appendChild(del);
         cont.appendChild(wrap);
       });
     }
@@ -655,7 +620,10 @@
     });
 
     document.getElementById("fSecondary").addEventListener("change", async e => {
-      for (const f of Array.from(e.target.files)) secImagesArr.push(await readFile(f));
+      const files = Array.from(e.target.files);
+      for (const f of files) {
+        secImagesArr.push(await readFile(f));
+      }
       renderSecPreviews();
       e.target.value = "";
     });
@@ -712,6 +680,7 @@
         prev.src = car.mainImage;
         prev.classList.add("on");
       }
+
       secImagesArr = [...(car.secondaryImages || [])];
       renderSecPreviews();
 
@@ -753,9 +722,9 @@
         let mainImage = null;
         if (editingId !== null) {
           const existing = carsCache.find(c => c.id === editingId);
-          if (existing) mainImage = existing.mainImage;
+          if (existing) { mainImage = existing.mainImage; }
         }
-        if (mainFile) mainImage = await readFile(mainFile, true);
+        if (mainFile) mainImage = await readFile(mainFile);
         const secondaryImages = secImagesArr.slice();
 
         if (!mainImage) {

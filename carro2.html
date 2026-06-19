@@ -90,37 +90,30 @@
     ];
 
     /* ── DB ── */
-    const BIN_ID     = "6a356040f5f4af5e290fcf56";
     const storageKey = "carros-page-inventory";
-    const dbName     = "carros-page-db";
-    const storeName  = "inventario";
+    const dbName    = "carros-page-db";
+    const storeName = "inventario";
 
     function openDatabase() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(dbName, 1);
-        req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(storeName)) req.result.createObjectStore(storeName); };
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+        };
         req.onsuccess = () => resolve(req.result);
-        req.onerror   = () => reject(new Error("No se pudo abrir la base de datos."));
+        req.onerror  = () => reject(new Error("No se pudo abrir la base de datos."));
       });
     }
 
     async function readInventoryFromDb() {
-      const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-      const data   = await res.json();
-      const remote = Array.isArray(data.record?.cars) ? data.record.cars : null;
-      if (!remote) return null;
-      try {
-        const db    = await openDatabase();
-        const local = await new Promise((resolve) => {
-          const req = db.transaction(storeName,"readonly").objectStore(storeName).get(storageKey);
-          req.onsuccess = () => resolve(req.result || []);
-          req.onerror   = () => resolve([]);
-        });
-        return remote.map(rcar => {
-          const lcar = local.find(l => l.id === rcar.id);
-          return { ...rcar, secondaryImages: lcar?.secondaryImages?.length ? lcar.secondaryImages : (rcar.secondaryImages || []) };
-        });
-      } catch (_) { return remote; }
+      const db = await openDatabase();
+      return new Promise((resolve, reject) => {
+        const tx  = db.transaction(storeName, "readonly");
+        const req = tx.objectStore(storeName).get(storageKey);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(new Error("No se pudo leer el inventario."));
+      });
     }
 
     /* ── Lightbox ── */
