@@ -271,18 +271,15 @@
 
             <!-- Fotos -->
             <p class="fsection">Fotos</p>
-            <div class="fgrid">
-              <div class="ffield">
-                <label>Foto principal</label>
-                <input type="file" id="fMain" accept="image/*">
-                <img class="img-prev-main" id="prevMain" src="" alt="preview">
-              </div>
-              <div class="ffield">
-                <label>Fotos secundarias</label>
-                <input type="file" id="fSecondary" accept="image/*" multiple style="display:none">
-                <button type="button" class="btn-add-row" id="btnAddSecPhotos" style="margin-top:4px">+ Agregar fotos</button>
-                <div class="sec-previews" id="prevSecondary"></div>
-              </div>
+            <div class="ffield">
+              <label>Foto principal (ruta en el repositorio)</label>
+              <input type="text" id="fMain" placeholder="imagenes/foto-principal.jpg">
+              <img class="img-prev-main" id="prevMain" src="" alt="preview">
+            </div>
+            <div class="ffield">
+              <label>Fotos secundarias</label>
+              <div class="dlist" id="secImagesList"></div>
+              <button type="button" class="btn-add-row" id="btnAddSecImg">+ Agregar foto secundaria</button>
             </div>
 
             <!-- Especificaciones -->
@@ -317,105 +314,26 @@
     const ADMIN_PASS = "Auto369precio";
 
     /* ── DB ── */
-    const BIN_ID     = "6a356040f5f4af5e290fcf56";
-    const IDB_NAME   = "carros-page-db";
-    const IDB_STORE  = "inventario";
-    const IDB_KEY    = "carros-page-inventory";
-    let carsCache       = [];
-    let editingId       = null;
-    let secImagesArr    = [];
-
-    /* IndexedDB — guarda imagenes localmente en este dispositivo */
-    function openIdb() {
-      return new Promise((res, rej) => {
-        const req = indexedDB.open(IDB_NAME, 1);
-        req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE); };
-        req.onsuccess = () => res(req.result);
-        req.onerror   = () => rej(req.error);
-      });
-    }
-    async function idbRead() {
-      const db = await openIdb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(IDB_STORE,"readonly").objectStore(IDB_STORE).get(IDB_KEY);
-        req.onsuccess = () => res(req.result || []);
-        req.onerror   = () => rej(req.error);
-      });
-    }
-    async function idbWrite(cars) {
-      const db = await openIdb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).put(cars, IDB_KEY);
-        req.onsuccess = () => res();
-        req.onerror   = () => rej(req.error);
-      });
-    }
-
-    /* JSONBin — guarda solo texto (sin imagenes base64) para sincronizar entre dispositivos */
-    function stripImages(cars) {
-      return cars.map(car => ({
-        ...car,
-        mainImage:       car.mainImage?.startsWith("data:") ? "" : (car.mainImage || ""),
-        secondaryImages: (car.secondaryImages || []).filter(img => !img?.startsWith("data:"))
-      }));
-    }
+    const BIN_ID = "6a356040f5f4af5e290fcf56";
+    let carsCache = [];
+    let editingId = null;
 
     async function readDb() {
-      /* 1. Traer metadata desde JSONBin */
-      const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-      const data   = await res.json();
-      const remote = Array.isArray(data.record?.cars) ? data.record.cars : [];
-
-      /* 2. Traer imagenes locales desde IndexedDB */
-      const local  = await idbRead();
-
-      /* 3. Combinar: texto de JSONBin + imagenes de IndexedDB */
-      return remote.map(rcar => {
-        const lcar = Array.isArray(local) ? local.find(l => l.id === rcar.id) : null;
-        return {
-          ...rcar,
-          mainImage:       rcar.mainImage || lcar?.mainImage || "",
-          secondaryImages: rcar.secondaryImages?.length ? rcar.secondaryImages : (lcar?.secondaryImages || [])
-        };
-      });
+      const res  = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+      const data = await res.json();
+      return Array.isArray(data.record?.cars) ? data.record.cars : [];
     }
 
     async function writeDb(cars) {
-      /* Guardar imagenes completas en IndexedDB local */
-      await idbWrite(cars);
-
-      /* Guardar solo texto (sin base64) en JSONBin via Netlify Function */
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ cars: stripImages(cars) })
+        body:    JSON.stringify({ cars })
       });
       if (!res.ok) {
         const txt = await res.text();
         throw new Error("Error al guardar (" + res.status + "): " + txt);
       }
-    }
-
-    function readFile(file) {
-      return new Promise((res, rej) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          const MAX = 900;
-          let w = img.naturalWidth, h = img.naturalHeight;
-          if (w > MAX || h > MAX) {
-            if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
-            else        { w = Math.round(w * MAX / h); h = MAX; }
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = w; canvas.height = h;
-          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          URL.revokeObjectURL(url);
-          res(canvas.toDataURL("image/jpeg", 0.55));
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Error al leer imagen")); };
-        img.src = url;
-      });
     }
 
     function escH(s) {
@@ -643,44 +561,28 @@
     document.getElementById("btnAddNeg").addEventListener("click", () =>
       document.getElementById("negList").appendChild(makeNegRow()));
 
-    /* ── Image previews ── */
-    document.getElementById("fMain").addEventListener("change", async e => {
-      const f = e.target.files[0]; if (!f) return;
+    /* ── Image path preview ── */
+    document.getElementById("fMain").addEventListener("input", e => {
       const prev = document.getElementById("prevMain");
-      prev.src = await readFile(f);
-      prev.classList.add("on");
+      const val  = e.target.value.trim();
+      prev.src = val;
+      prev.classList.toggle("on", !!val);
     });
 
-    function renderSecPreviews() {
-      const cont = document.getElementById("prevSecondary");
-      cont.innerHTML = "";
-      secImagesArr.forEach((src, i) => {
-        const wrap = document.createElement("div");
-        wrap.className = "sec-thumb-wrap";
-        const img = document.createElement("img");
-        img.src = src;
-        const del = document.createElement("button");
-        del.type = "button";
-        del.className = "sec-thumb-del";
-        del.textContent = "×";
-        del.addEventListener("click", () => { secImagesArr.splice(i, 1); renderSecPreviews(); });
-        wrap.appendChild(img);
-        wrap.appendChild(del);
-        cont.appendChild(wrap);
-      });
+    function makeSecImgRow(val = "") {
+      const row = document.createElement("div");
+      row.className = "hl-row";
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.placeholder = "imagenes/foto.jpg"; inp.value = val;
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "hl-del"; del.textContent = "×";
+      del.addEventListener("click", () => row.remove());
+      row.appendChild(inp); row.appendChild(del);
+      return row;
     }
 
-    document.getElementById("btnAddSecPhotos").addEventListener("click", () => {
-      document.getElementById("fSecondary").click();
-    });
-
-    document.getElementById("fSecondary").addEventListener("change", async e => {
-      const files = Array.from(e.target.files);
-      for (const f of files) {
-        secImagesArr.push(await readFile(f));
-      }
-      renderSecPreviews();
-      e.target.value = "";
+    document.getElementById("btnAddSecImg").addEventListener("click", () => {
+      document.getElementById("secImagesList").appendChild(makeSecImgRow());
     });
 
     /* ── Open / close form ── */
@@ -706,11 +608,11 @@
 
     function resetForm() {
       document.getElementById("adminCarForm").reset();
-      document.getElementById("fId").value = "";
+      document.getElementById("fId").value    = "";
+      document.getElementById("fMain").value  = "";
       document.getElementById("prevMain").classList.remove("on");
       document.getElementById("prevMain").src = "";
-      secImagesArr = [];
-      document.getElementById("prevSecondary").innerHTML = "";
+      document.getElementById("secImagesList").innerHTML = "";
       document.getElementById("specsList").innerHTML = "";
       document.getElementById("hlList").innerHTML = "";
       document.getElementById("negList").innerHTML = "";
@@ -730,14 +632,14 @@
       document.getElementById("fPriceType").value = car.priceType || "Negociable";
       document.getElementById("fDesc").value   = car.bodyDescription || "";
 
-      if (car.mainImage) {
-        const prev = document.getElementById("prevMain");
-        prev.src = car.mainImage;
-        prev.classList.add("on");
-      }
+      document.getElementById("fMain").value = car.mainImage || "";
+      const prev = document.getElementById("prevMain");
+      prev.src = car.mainImage || "";
+      prev.classList.toggle("on", !!car.mainImage);
 
-      secImagesArr = [...(car.secondaryImages || [])];
-      renderSecPreviews();
+      const sl2 = document.getElementById("secImagesList");
+      sl2.innerHTML = "";
+      (car.secondaryImages || []).forEach(src => sl2.appendChild(makeSecImgRow(src)));
 
       const sl = document.getElementById("specsList");
       sl.innerHTML = "";
@@ -761,7 +663,7 @@
       msgEl.textContent = "Guardando..."; msgEl.className = "amsg";
 
       try {
-        const mainFile = document.getElementById("fMain").files[0];
+        const mainImage = document.getElementById("fMain").value.trim();
 
         const specs = Array.from(document.getElementById("specsList").querySelectorAll(".spec-row")).map(row => {
           const inp = row.querySelectorAll("input");
@@ -774,16 +676,11 @@
         const negatives = Array.from(document.getElementById("negList").querySelectorAll(".hl-row input"))
           .map(i => i.value.trim()).filter(Boolean);
 
-        let mainImage = null;
-        if (editingId !== null) {
-          const existing = carsCache.find(c => c.id === editingId);
-          if (existing) { mainImage = existing.mainImage; }
-        }
-        if (mainFile) mainImage = await readFile(mainFile);
-        const secondaryImages = secImagesArr.slice();
+        const secondaryImages = Array.from(document.getElementById("secImagesList").querySelectorAll(".hl-row input"))
+          .map(i => i.value.trim()).filter(Boolean);
 
         if (!mainImage) {
-          msgEl.textContent = "Debes agregar una foto principal."; msgEl.className = "amsg err"; return;
+          msgEl.textContent = "Debes ingresar la ruta de la foto principal."; msgEl.className = "amsg err"; return;
         }
 
         const price     = document.getElementById("fPrice").value.trim();
