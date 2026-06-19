@@ -316,26 +316,79 @@
     const ADMIN_USER = "Programador1";
     const ADMIN_PASS = "Auto369precio";
 
-    /* ── DB (JSONBin — sincroniza entre dispositivos) ── */
+    /* ── DB ── */
     const BIN_ID     = "6a356040f5f4af5e290fcf56";
-    const MASTER_KEY = "$2a$10$FyLaTG6caTU5xPQSNkUzT.Al/dst601iPSmxSSlgfdEl9k0sUgBju";
+    const IDB_NAME   = "carros-page-db";
+    const IDB_STORE  = "inventario";
+    const IDB_KEY    = "carros-page-inventory";
     let carsCache       = [];
     let editingId       = null;
     let secImagesArr    = [];
 
-    async function readDb() {
-      const res  = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-        headers: { "X-Master-Key": MASTER_KEY }
+    /* IndexedDB — guarda imagenes localmente en este dispositivo */
+    function openIdb() {
+      return new Promise((res, rej) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE); };
+        req.onsuccess = () => res(req.result);
+        req.onerror   = () => rej(req.error);
       });
-      const data = await res.json();
-      return Array.isArray(data.record?.cars) ? data.record.cars : [];
+    }
+    async function idbRead() {
+      const db = await openIdb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(IDB_STORE,"readonly").objectStore(IDB_STORE).get(IDB_KEY);
+        req.onsuccess = () => res(req.result || []);
+        req.onerror   = () => rej(req.error);
+      });
+    }
+    async function idbWrite(cars) {
+      const db = await openIdb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).put(cars, IDB_KEY);
+        req.onsuccess = () => res();
+        req.onerror   = () => rej(req.error);
+      });
+    }
+
+    /* JSONBin — guarda solo texto (sin imagenes base64) para sincronizar entre dispositivos */
+    function stripImages(cars) {
+      return cars.map(car => ({
+        ...car,
+        mainImage:       car.mainImage?.startsWith("data:") ? "" : (car.mainImage || ""),
+        secondaryImages: (car.secondaryImages || []).filter(img => !img?.startsWith("data:"))
+      }));
+    }
+
+    async function readDb() {
+      /* 1. Traer metadata desde JSONBin */
+      const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+      const data   = await res.json();
+      const remote = Array.isArray(data.record?.cars) ? data.record.cars : [];
+
+      /* 2. Traer imagenes locales desde IndexedDB */
+      const local  = await idbRead();
+
+      /* 3. Combinar: texto de JSONBin + imagenes de IndexedDB */
+      return remote.map(rcar => {
+        const lcar = Array.isArray(local) ? local.find(l => l.id === rcar.id) : null;
+        return {
+          ...rcar,
+          mainImage:       rcar.mainImage || lcar?.mainImage || "",
+          secondaryImages: rcar.secondaryImages?.length ? rcar.secondaryImages : (lcar?.secondaryImages || [])
+        };
+      });
     }
 
     async function writeDb(cars) {
+      /* Guardar imagenes completas en IndexedDB local */
+      await idbWrite(cars);
+
+      /* Guardar solo texto (sin base64) en JSONBin via Netlify Function */
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ cars })
+        body:    JSON.stringify({ cars: stripImages(cars) })
       });
       if (!res.ok) {
         const txt = await res.text();
