@@ -332,9 +332,9 @@
     }
 
     async function writeDb(cars) {
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-        method:  "PUT",
-        headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
+      const res = await fetch("/.netlify/functions/save-cars", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ cars })
       });
       if (!res.ok) {
