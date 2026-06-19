@@ -55,9 +55,11 @@ exports.handler = async (event) => {
       const { filename, base64 } = payload;
       const safeName = filename.replace(/[^a-zA-Z0-9._\- ]/g, "_");
       const content  = base64.replace(/^data:[^;]+;base64,/, "");
-      const current  = await ghGet(`imagenes/${safeName}`);
-      await ghPut(`imagenes/${safeName}`, content, current?.sha, "Subir imagen " + safeName);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, path: `imagenes/${safeName}` }) };
+      const current      = await ghGet(`imagenes/${safeName}`);
+      const uploadResult = await ghPut(`imagenes/${safeName}`, content, current?.sha, "Subir imagen " + safeName);
+      const rawUrl       = uploadResult?.content?.download_url ||
+        `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/imagenes/${safeName}`;
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, path: rawUrl }) };
     }
 
     /* ── Guardar en JSONBin (fallback sin token) ── */

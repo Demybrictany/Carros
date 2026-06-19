@@ -324,15 +324,7 @@
     let pendingMainFile = null;
 
     async function readDb() {
-      // 1. Leer data/cars.json (fuente de GitHub - mas actualizada)
-      try {
-        const res = await fetch("/data/cars.json?_=" + Date.now());
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.cars) && data.cars.length > 0) return data.cars;
-        }
-      } catch(_) {}
-      // 2. Fallback: leer de JSONBin
+      // 1. JSONBin (siempre actualizado, fuente mas fresca)
       try {
         const res = await fetch(BIN_URL);
         if (res.ok) {
@@ -340,41 +332,50 @@
           if (Array.isArray(data.record?.cars) && data.record.cars.length > 0) return data.record.cars;
         }
       } catch(_) {}
+      // 2. Fallback: data/cars.json
+      try {
+        const res = await fetch("/data/cars.json?_=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.cars) && data.cars.length > 0) return data.cars;
+        }
+      } catch(_) {}
       return [];
     }
 
     async function writeDb(cars) {
-      // Intentar GitHub primero
+      let githubOk = false;
+
+      // 1. Intentar GitHub (actualiza el archivo para el proximo deploy)
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ type: "save-cars", cars })
       });
-      if (res.ok) return;
-
-      const err = await res.json().catch(() => ({}));
-
-      // Si no hay GITHUB_TOKEN, usar JSONBin como fallback automatico
-      if (err.error?.includes("GITHUB_TOKEN")) {
-        const carsForBin = cars.map(c => ({
-          ...c,
-          // Mantener imagenes pequeñas (rutas o base64 pequeño), quitar base64 grandes
-          mainImage:       c.mainImage?.length > 60000 ? null : c.mainImage,
-          secondaryImages: (c.secondaryImages || []).filter(s => !s?.startsWith("data:") || s.length < 60000)
-        }));
-        const res2 = await fetch("/.netlify/functions/save-cars", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ type: "save-jsonbin", cars: carsForBin })
-        });
-        if (!res2.ok) {
-          const e2 = await res2.json().catch(() => ({}));
-          throw new Error(e2.error || "Error al guardar");
+      if (res.ok) {
+        githubOk = true;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (!err.error?.includes("GITHUB_TOKEN")) {
+          throw new Error(err.error || "Error al guardar (" + res.status + ")");
         }
-        return; // guardado en JSONBin OK
       }
 
-      throw new Error(err.error || "Error al guardar (" + res.status + ")");
+      // 2. Siempre guardar en JSONBin (visible inmediatamente para todos los usuarios)
+      const carsForBin = cars.map(c => ({
+        ...c,
+        mainImage:       c.mainImage?.length > 60000 ? null : c.mainImage,
+        secondaryImages: (c.secondaryImages || []).filter(s => !s?.startsWith("data:") || s.length < 60000)
+      }));
+      const res2 = await fetch("/.netlify/functions/save-cars", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ type: "save-jsonbin", cars: carsForBin })
+      });
+      if (!res2.ok && !githubOk) {
+        const e2 = await res2.json().catch(() => ({}));
+        throw new Error(e2.error || "Error al guardar");
+      }
     }
 
     function compressImage(file, maxW = 1200, quality = 0.78) {
@@ -552,7 +553,23 @@
     async function loadCars() {
       const raw = await readDb();
       let needsSave = false;
-      carsCache = (Array.isArray(raw) ? raw : []).map(c => {
+      let combined = Array.isArray(raw) ? [...raw] : [];
+
+      // Sincronizacion inicial: agregar carros del archivo local que no esten en JSONBin
+      // Esto maneja el caso donde JSONBin esta desactualizado (ej: primera carga despues de un deploy)
+      try {
+        const localRes = await fetch("/data/cars.json?_=" + Date.now());
+        if (localRes.ok) {
+          const localData = await localRes.json();
+          if (Array.isArray(localData.cars)) {
+            const knownIds = new Set(combined.map(c => c.id).filter(id => id != null));
+            const fromLocal = localData.cars.filter(c => c.id != null && !knownIds.has(c.id));
+            if (fromLocal.length > 0) { combined.push(...fromLocal); needsSave = true; }
+          }
+        }
+      } catch(_) {}
+
+      carsCache = combined.map(c => {
         const def = DEFAULTS.find(d => d.name === c.name);
         if (!c.id) {
           c.id = def ? def.id : Date.now();

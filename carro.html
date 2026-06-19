@@ -63,20 +63,20 @@
 
   <script>
     async function readInventoryFromDb() {
-      // 1. data/cars.json (GitHub)
-      try {
-        const res = await fetch("/data/cars.json?_=" + Date.now());
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.cars)) return data.cars;
-        }
-      } catch(_) {}
-      // 2. JSONBin fallback
+      // 1. JSONBin (siempre actualizado cuando el admin guarda)
       try {
         const res = await fetch("https://api.jsonbin.io/v3/b/6a356040f5f4af5e290fcf56/latest");
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.record?.cars)) return data.record.cars;
+        }
+      } catch(_) {}
+      // 2. data/cars.json fallback
+      try {
+        const res = await fetch("/data/cars.json?_=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.cars)) return data.cars;
         }
       } catch(_) {}
       return null;
