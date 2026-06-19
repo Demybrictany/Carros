@@ -271,15 +271,18 @@
 
             <!-- Fotos -->
             <p class="fsection">Fotos</p>
-            <div class="ffield">
-              <label>Foto principal (ruta en el repositorio)</label>
-              <input type="text" id="fMain" placeholder="imagenes/foto-principal.jpg">
-              <img class="img-prev-main" id="prevMain" src="" alt="preview">
-            </div>
-            <div class="ffield">
-              <label>Fotos secundarias</label>
-              <div class="dlist" id="secImagesList"></div>
-              <button type="button" class="btn-add-row" id="btnAddSecImg">+ Agregar foto secundaria</button>
+            <div class="fgrid">
+              <div class="ffield">
+                <label>Foto principal</label>
+                <input type="file" id="fMain" accept="image/*">
+                <img class="img-prev-main" id="prevMain" src="" alt="preview">
+              </div>
+              <div class="ffield">
+                <label>Fotos secundarias</label>
+                <input type="file" id="fSecondary" accept="image/*" multiple style="display:none">
+                <button type="button" class="btn-add-row" id="btnAddSecPhotos" style="margin-top:4px">+ Agregar fotos</button>
+                <div class="sec-previews" id="prevSecondary"></div>
+              </div>
             </div>
 
             <!-- Especificaciones -->
@@ -314,26 +317,82 @@
     const ADMIN_PASS = "Auto369precio";
 
     /* ── DB ── */
-    const BIN_ID = "6a356040f5f4af5e290fcf56";
-    let carsCache = [];
-    let editingId = null;
+    const BIN_ID    = "6a356040f5f4af5e290fcf56";
+    const IDB_NAME  = "carros-page-db";
+    const IDB_STORE = "inventario";
+    const IDB_KEY   = "carros-page-inventory";
+    let carsCache   = [];
+    let editingId   = null;
+    let secImagesArr = [];
 
-    async function readDb() {
-      const res  = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-      const data = await res.json();
-      return Array.isArray(data.record?.cars) ? data.record.cars : [];
+    /* IndexedDB — datos completos con imagenes en este dispositivo */
+    function openIdb() {
+      return new Promise((res, rej) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE); };
+        req.onsuccess = () => res(req.result);
+        req.onerror   = () => rej(req.error);
+      });
+    }
+    async function idbRead() {
+      const db = await openIdb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(IDB_STORE,"readonly").objectStore(IDB_STORE).get(IDB_KEY);
+        req.onsuccess = () => res(req.result || []);
+        req.onerror   = () => rej(req.error);
+      });
+    }
+    async function idbWrite(cars) {
+      const db = await openIdb();
+      return new Promise((res, rej) => {
+        const req = db.transaction(IDB_STORE,"readwrite").objectStore(IDB_STORE).put(cars, IDB_KEY);
+        req.onsuccess = () => res();
+        req.onerror   = () => rej(req.error);
+      });
     }
 
+    /* IndexedDB es la fuente principal de datos */
+    async function readDb() {
+      return await idbRead();
+    }
+
+    /* Guarda en IndexedDB (completo) y sincroniza solo los estados a JSONBin */
     async function writeDb(cars) {
+      await idbWrite(cars);
+      const statuses = {};
+      cars.forEach(c => { statuses[String(c.id)] = c.status; });
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ cars })
+        body:    JSON.stringify({ statuses })
       });
       if (!res.ok) {
         const txt = await res.text();
-        throw new Error("Error al guardar (" + res.status + "): " + txt);
+        throw new Error("Error al sincronizar estado (" + res.status + "): " + txt);
       }
+    }
+
+    /* Comprime imagen antes de guardar como base64 */
+    function readFile(file) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          const MAX = 900;
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > MAX || h > MAX) {
+            if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+            else        { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          res(canvas.toDataURL("image/jpeg", 0.55));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Error al leer imagen")); };
+        img.src = url;
+      });
     }
 
     function escH(s) {
@@ -561,28 +620,38 @@
     document.getElementById("btnAddNeg").addEventListener("click", () =>
       document.getElementById("negList").appendChild(makeNegRow()));
 
-    /* ── Image path preview ── */
-    document.getElementById("fMain").addEventListener("input", e => {
+    /* ── Image previews ── */
+    document.getElementById("fMain").addEventListener("change", async e => {
+      const f = e.target.files[0]; if (!f) return;
       const prev = document.getElementById("prevMain");
-      const val  = e.target.value.trim();
-      prev.src = val;
-      prev.classList.toggle("on", !!val);
+      prev.src = await readFile(f);
+      prev.classList.add("on");
     });
 
-    function makeSecImgRow(val = "") {
-      const row = document.createElement("div");
-      row.className = "hl-row";
-      const inp = document.createElement("input");
-      inp.type = "text"; inp.placeholder = "imagenes/foto.jpg"; inp.value = val;
-      const del = document.createElement("button");
-      del.type = "button"; del.className = "hl-del"; del.textContent = "×";
-      del.addEventListener("click", () => row.remove());
-      row.appendChild(inp); row.appendChild(del);
-      return row;
+    function renderSecPreviews() {
+      const cont = document.getElementById("prevSecondary");
+      cont.innerHTML = "";
+      secImagesArr.forEach((src, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "sec-thumb-wrap";
+        const img = document.createElement("img");
+        img.src = src;
+        const del = document.createElement("button");
+        del.type = "button"; del.className = "sec-thumb-del"; del.textContent = "×";
+        del.addEventListener("click", () => { secImagesArr.splice(i, 1); renderSecPreviews(); });
+        wrap.appendChild(img); wrap.appendChild(del);
+        cont.appendChild(wrap);
+      });
     }
 
-    document.getElementById("btnAddSecImg").addEventListener("click", () => {
-      document.getElementById("secImagesList").appendChild(makeSecImgRow());
+    document.getElementById("btnAddSecPhotos").addEventListener("click", () => {
+      document.getElementById("fSecondary").click();
+    });
+
+    document.getElementById("fSecondary").addEventListener("change", async e => {
+      for (const f of Array.from(e.target.files)) secImagesArr.push(await readFile(f));
+      renderSecPreviews();
+      e.target.value = "";
     });
 
     /* ── Open / close form ── */
@@ -608,11 +677,11 @@
 
     function resetForm() {
       document.getElementById("adminCarForm").reset();
-      document.getElementById("fId").value    = "";
-      document.getElementById("fMain").value  = "";
+      document.getElementById("fId").value = "";
       document.getElementById("prevMain").classList.remove("on");
       document.getElementById("prevMain").src = "";
-      document.getElementById("secImagesList").innerHTML = "";
+      secImagesArr = [];
+      document.getElementById("prevSecondary").innerHTML = "";
       document.getElementById("specsList").innerHTML = "";
       document.getElementById("hlList").innerHTML = "";
       document.getElementById("negList").innerHTML = "";
@@ -632,14 +701,13 @@
       document.getElementById("fPriceType").value = car.priceType || "Negociable";
       document.getElementById("fDesc").value   = car.bodyDescription || "";
 
-      document.getElementById("fMain").value = car.mainImage || "";
-      const prev = document.getElementById("prevMain");
-      prev.src = car.mainImage || "";
-      prev.classList.toggle("on", !!car.mainImage);
-
-      const sl2 = document.getElementById("secImagesList");
-      sl2.innerHTML = "";
-      (car.secondaryImages || []).forEach(src => sl2.appendChild(makeSecImgRow(src)));
+      if (car.mainImage) {
+        const prev = document.getElementById("prevMain");
+        prev.src = car.mainImage;
+        prev.classList.add("on");
+      }
+      secImagesArr = [...(car.secondaryImages || [])];
+      renderSecPreviews();
 
       const sl = document.getElementById("specsList");
       sl.innerHTML = "";
@@ -663,7 +731,7 @@
       msgEl.textContent = "Guardando..."; msgEl.className = "amsg";
 
       try {
-        const mainImage = document.getElementById("fMain").value.trim();
+        const mainFile = document.getElementById("fMain").files[0];
 
         const specs = Array.from(document.getElementById("specsList").querySelectorAll(".spec-row")).map(row => {
           const inp = row.querySelectorAll("input");
@@ -676,11 +744,16 @@
         const negatives = Array.from(document.getElementById("negList").querySelectorAll(".hl-row input"))
           .map(i => i.value.trim()).filter(Boolean);
 
-        const secondaryImages = Array.from(document.getElementById("secImagesList").querySelectorAll(".hl-row input"))
-          .map(i => i.value.trim()).filter(Boolean);
+        let mainImage = null;
+        if (editingId !== null) {
+          const existing = carsCache.find(c => c.id === editingId);
+          if (existing) mainImage = existing.mainImage;
+        }
+        if (mainFile) mainImage = await readFile(mainFile);
+        const secondaryImages = secImagesArr.slice();
 
         if (!mainImage) {
-          msgEl.textContent = "Debes ingresar la ruta de la foto principal."; msgEl.className = "amsg err"; return;
+          msgEl.textContent = "Debes agregar una foto principal."; msgEl.className = "amsg err"; return;
         }
 
         const price     = document.getElementById("fPrice").value.trim();
