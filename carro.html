@@ -62,7 +62,7 @@
   </div>
 
   <script>
-    const BIN_ID = "6a356040f5f4af5e290fcf56";
+    const BIN_ID     = "6a356040f5f4af5e290fcf56";
     const storageKey = "carros-page-inventory";
     const dbName     = "carros-page-db";
     const storeName  = "inventario";
@@ -77,23 +77,25 @@
     }
 
     async function readInventoryFromDb() {
-      /* Leer datos completos desde IndexedDB */
-      const db   = await openDatabase();
-      const cars = await new Promise((resolve, reject) => {
-        const req = db.transaction(storeName,"readonly").objectStore(storeName).get(storageKey);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror   = () => reject(req.error);
-      });
+      /* JSONBin: datos completos con foto principal */
+      const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+      const data   = await res.json();
+      const remote = Array.isArray(data.record?.cars) ? data.record.cars : null;
+      if (!remote) return null;
 
-      /* Aplicar estados actualizados desde JSONBin */
-      if (!Array.isArray(cars)) return null;
+      /* IndexedDB: fotos secundarias locales */
       try {
-        const res      = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-        const data     = await res.json();
-        const statuses = data.record?.statuses;
-        if (statuses) return cars.map(c => ({ ...c, status: statuses[String(c.id)] ?? c.status }));
-      } catch (_) {}
-      return cars;
+        const db   = await openDatabase();
+        const local = await new Promise((resolve) => {
+          const req = db.transaction(storeName,"readonly").objectStore(storeName).get(storageKey);
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror   = () => resolve([]);
+        });
+        return remote.map(rcar => {
+          const lcar = local.find(l => l.id === rcar.id);
+          return { ...rcar, secondaryImages: lcar?.secondaryImages?.length ? lcar.secondaryImages : (rcar.secondaryImages || []) };
+        });
+      } catch (_) { return remote; }
     }
 
     /* ── Helpers ── */

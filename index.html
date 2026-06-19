@@ -319,17 +319,17 @@
     }
 
     async function loadCars() {
-      let cars = sanitizeCars(defaultCars);
       try {
-        const res      = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-        const data     = await res.json();
-        const statuses = data.record?.statuses;
-        if (statuses) {
-          cars = cars.map(car => ({ ...car, status: statuses[String(car.id)] ?? car.status }));
+        const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+        const data   = await res.json();
+        const remote = data.record?.cars;
+        if (Array.isArray(remote) && remote.length > 0) {
+          carsCache = sanitizeCars(remote);
+          return carsCache;
         }
       } catch (_) {}
-      carsCache = cars;
-      return cars;
+      carsCache = sanitizeCars(defaultCars);
+      return carsCache;
     }
 
     async function renderCars() {

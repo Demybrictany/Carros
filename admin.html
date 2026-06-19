@@ -321,11 +321,11 @@
     const IDB_NAME  = "carros-page-db";
     const IDB_STORE = "inventario";
     const IDB_KEY   = "carros-page-inventory";
-    let carsCache   = [];
-    let editingId   = null;
+    let carsCache    = [];
+    let editingId    = null;
     let secImagesArr = [];
 
-    /* IndexedDB — datos completos con imagenes en este dispositivo */
+    /* IndexedDB — guarda fotos secundarias en este dispositivo */
     function openIdb() {
       return new Promise((res, rej) => {
         const req = indexedDB.open(IDB_NAME, 1);
@@ -351,34 +351,40 @@
       });
     }
 
-    /* IndexedDB es la fuente principal de datos */
+    /* JSONBin guarda todo menos fotos secundarias; IndexedDB guarda todo */
     async function readDb() {
-      return await idbRead();
+      const res    = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+      const data   = await res.json();
+      const remote = Array.isArray(data.record?.cars) ? data.record.cars : [];
+      const local  = await idbRead();
+      return remote.map(rcar => {
+        const lcar = local.find(l => l.id === rcar.id);
+        return { ...rcar, secondaryImages: lcar?.secondaryImages?.length ? lcar.secondaryImages : (rcar.secondaryImages || []) };
+      });
     }
 
-    /* Guarda en IndexedDB (completo) y sincroniza solo los estados a JSONBin */
     async function writeDb(cars) {
       await idbWrite(cars);
-      const statuses = {};
-      cars.forEach(c => { statuses[String(c.id)] = c.status; });
+      const forBin = cars.map(c => ({ ...c, secondaryImages: [] }));
       const res = await fetch("/.netlify/functions/save-cars", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ statuses })
+        body:    JSON.stringify({ cars: forBin })
       });
       if (!res.ok) {
         const txt = await res.text();
-        throw new Error("Error al sincronizar estado (" + res.status + "): " + txt);
+        throw new Error("Error al guardar (" + res.status + "): " + txt);
       }
     }
 
-    /* Comprime imagen antes de guardar como base64 */
-    function readFile(file) {
+    /* Comprime foto principal pequena para JSONBin (~5-8KB) */
+    function readFile(file, forMain = false) {
       return new Promise((res, rej) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
         img.onload = () => {
-          const MAX = 900;
+          const MAX = forMain ? 480 : 900;
+          const Q   = forMain ? 0.38 : 0.55;
           let w = img.naturalWidth, h = img.naturalHeight;
           if (w > MAX || h > MAX) {
             if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -388,7 +394,7 @@
           canvas.width = w; canvas.height = h;
           canvas.getContext("2d").drawImage(img, 0, 0, w, h);
           URL.revokeObjectURL(url);
-          res(canvas.toDataURL("image/jpeg", 0.55));
+          res(canvas.toDataURL("image/jpeg", Q));
         };
         img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Error al leer imagen")); };
         img.src = url;
@@ -624,7 +630,7 @@
     document.getElementById("fMain").addEventListener("change", async e => {
       const f = e.target.files[0]; if (!f) return;
       const prev = document.getElementById("prevMain");
-      prev.src = await readFile(f);
+      prev.src = await readFile(f, true);
       prev.classList.add("on");
     });
 
@@ -749,7 +755,7 @@
           const existing = carsCache.find(c => c.id === editingId);
           if (existing) mainImage = existing.mainImage;
         }
-        if (mainFile) mainImage = await readFile(mainFile);
+        if (mainFile) mainImage = await readFile(mainFile, true);
         const secondaryImages = secImagesArr.slice();
 
         if (!mainImage) {
