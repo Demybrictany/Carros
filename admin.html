@@ -316,51 +316,71 @@
     const ADMIN_USER = "Programador1";
     const ADMIN_PASS = "Auto369precio";
 
-    /* ── DB ── */
-    const storageKey = "carros-page-inventory";
-    const dbName     = "carros-page-db";
-    const storeName  = "inventario";
-    let carsCache       = [];
-    let editingId       = null;
-    let secImagesArr    = [];
-
-    function openDb() {
-      return new Promise((res, rej) => {
-        const req = indexedDB.open(dbName, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
-        };
-        req.onsuccess = () => res(req.result);
-        req.onerror   = () => rej(new Error("Error al abrir DB"));
-      });
-    }
+    /* ── DB: lee/escribe data/cars.json via GitHub ── */
+    let carsCache    = [];
+    let editingId    = null;
+    let secImagesArr = []; // File objects o strings (rutas existentes)
+    let pendingMainFile = null;
 
     async function readDb() {
-      const db = await openDb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(storeName, "readonly").objectStore(storeName).get(storageKey);
-        req.onsuccess = () => res(req.result || []);
-        req.onerror   = () => rej(new Error("Error al leer DB"));
-      });
+      try {
+        const res = await fetch("/data/cars.json?_=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.cars)) return data.cars;
+        }
+      } catch(_) {}
+      return [];
     }
 
     async function writeDb(cars) {
-      const db = await openDb();
-      return new Promise((res, rej) => {
-        const req = db.transaction(storeName, "readwrite").objectStore(storeName).put(cars, storageKey);
-        req.onsuccess = () => res();
-        req.onerror   = () => rej(new Error("Error al guardar DB"));
+      const res = await fetch("/.netlify/functions/save-cars", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ type: "save-cars", cars })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al guardar (codigo " + res.status + ")");
+      }
+    }
+
+    function compressImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Error al leer imagen"));
+        reader.onload  = e => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("Error al procesar imagen"));
+          img.onload  = () => {
+            const MAX = 1200;
+            let w = img.naturalWidth, h = img.naturalHeight;
+            if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+            const canvas = document.createElement("canvas");
+            canvas.width = w; canvas.height = h;
+            canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.78));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
       });
     }
 
-    function readFile(file) {
-      return new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload  = () => res(r.result);
-        r.onerror = () => rej(new Error("Error al leer imagen"));
-        r.readAsDataURL(file);
+    async function uploadImage(file) {
+      const base64   = await compressImage(file);
+      const safeName = Date.now() + "_" + file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+      const res = await fetch("/.netlify/functions/save-cars", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ type: "upload-image", filename: safeName, base64 })
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al subir imagen");
+      }
+      const data = await res.json();
+      return data.path; // "imagenes/timestamp_nombre.jpg"
     }
 
     function escH(s) {
@@ -589,21 +609,22 @@
       document.getElementById("negList").appendChild(makeNegRow()));
 
     /* ── Image previews ── */
-    document.getElementById("fMain").addEventListener("change", async e => {
+    document.getElementById("fMain").addEventListener("change", e => {
       const f = e.target.files[0]; if (!f) return;
+      pendingMainFile = f;
       const prev = document.getElementById("prevMain");
-      prev.src = await readFile(f);
+      prev.src = URL.createObjectURL(f);
       prev.classList.add("on");
     });
 
     function renderSecPreviews() {
       const cont = document.getElementById("prevSecondary");
       cont.innerHTML = "";
-      secImagesArr.forEach((src, i) => {
+      secImagesArr.forEach((item, i) => {
         const wrap = document.createElement("div");
         wrap.className = "sec-thumb-wrap";
         const img = document.createElement("img");
-        img.src = src;
+        img.src = item instanceof File ? URL.createObjectURL(item) : item;
         const del = document.createElement("button");
         del.type = "button";
         del.className = "sec-thumb-del";
@@ -619,11 +640,9 @@
       document.getElementById("fSecondary").click();
     });
 
-    document.getElementById("fSecondary").addEventListener("change", async e => {
+    document.getElementById("fSecondary").addEventListener("change", e => {
       const files = Array.from(e.target.files);
-      for (const f of files) {
-        secImagesArr.push(await readFile(f));
-      }
+      for (const f of files) secImagesArr.push(f);
       renderSecPreviews();
       e.target.value = "";
     });
@@ -654,6 +673,7 @@
       document.getElementById("fId").value = "";
       document.getElementById("prevMain").classList.remove("on");
       document.getElementById("prevMain").src = "";
+      pendingMainFile = null;
       secImagesArr = [];
       document.getElementById("prevSecondary").innerHTML = "";
       document.getElementById("specsList").innerHTML = "";
@@ -666,6 +686,7 @@
     function openEdit(i) {
       const car = carsCache[i]; if (!car) return;
       editingId = car.id;
+      pendingMainFile = null;
       document.getElementById("formTitle").textContent = "Editar carro";
       document.getElementById("fId").value     = car.id;
       document.getElementById("fName").value   = car.name || "";
@@ -681,7 +702,7 @@
         prev.classList.add("on");
       }
 
-      secImagesArr = [...(car.secondaryImages || [])];
+      secImagesArr = [...(car.secondaryImages || [])]; // strings (rutas)
       renderSecPreviews();
 
       const sl = document.getElementById("specsList");
@@ -706,8 +727,6 @@
       msgEl.textContent = "Guardando..."; msgEl.className = "amsg";
 
       try {
-        const mainFile = document.getElementById("fMain").files[0];
-
         const specs = Array.from(document.getElementById("specsList").querySelectorAll(".spec-row")).map(row => {
           const inp = row.querySelectorAll("input");
           return { label: inp[0].value.trim(), value: inp[1].value.trim() };
@@ -719,16 +738,32 @@
         const negatives = Array.from(document.getElementById("negList").querySelectorAll(".hl-row input"))
           .map(i => i.value.trim()).filter(Boolean);
 
+        // Imagen principal
         let mainImage = null;
         if (editingId !== null) {
           const existing = carsCache.find(c => c.id === editingId);
-          if (existing) { mainImage = existing.mainImage; }
+          if (existing) mainImage = existing.mainImage || null;
         }
-        if (mainFile) mainImage = await readFile(mainFile);
-        const secondaryImages = secImagesArr.slice();
+        if (pendingMainFile) {
+          msgEl.textContent = "Subiendo foto principal...";
+          mainImage = await uploadImage(pendingMainFile);
+        }
 
         if (!mainImage) {
           msgEl.textContent = "Debes agregar una foto principal."; msgEl.className = "amsg err"; return;
+        }
+
+        // Fotos secundarias: subir las que son File, mantener las rutas existentes
+        const secondaryImages = [];
+        let idx = 0;
+        for (const item of secImagesArr) {
+          if (item instanceof File) {
+            idx++;
+            msgEl.textContent = "Subiendo foto " + idx + "...";
+            secondaryImages.push(await uploadImage(item));
+          } else {
+            secondaryImages.push(item);
+          }
         }
 
         const price     = document.getElementById("fPrice").value.trim();
@@ -744,23 +779,23 @@
           description:     price ? price + " — " + priceType + ". " : ""
         };
 
-        // Releer BD antes de guardar para no pisar cambios de otras fuentes
-        const freshDb  = await readDb();
-        let freshCars  = (Array.isArray(freshDb) ? freshDb : []).map(c => { if (!c.id) c.id = Date.now(); return c; });
+        msgEl.textContent = "Guardando datos...";
+        const freshCars = await readDb();
+        let updated = Array.isArray(freshCars) ? freshCars : [];
 
         if (editingId !== null) {
-          const idx = freshCars.findIndex(c => c.id === editingId);
-          if (idx !== -1) freshCars[idx] = car; else freshCars.unshift(car);
+          const i = updated.findIndex(c => c.id === editingId);
+          if (i !== -1) updated[i] = car; else updated.unshift(car);
         } else {
-          freshCars.unshift(car);
+          updated.unshift(car);
         }
 
-        await writeDb(freshCars);
-        carsCache = freshCars;
+        await writeDb(updated);
+        carsCache = updated;
         renderList();
-        msgEl.textContent = editingId !== null ? "Carro actualizado." : "Carro agregado correctamente.";
+        msgEl.textContent = "¡Guardado! La pagina se actualiza en ~30 segundos en todos los dispositivos.";
         msgEl.className = "amsg ok";
-        setTimeout(closeForm, 1200);
+        setTimeout(closeForm, 2800);
       } catch (err) {
         msgEl.textContent = err.message || "Error al guardar.";
         msgEl.className = "amsg err";

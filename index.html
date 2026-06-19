@@ -301,9 +301,6 @@
       },
     ];
 
-    const storageKey = "carros-page-inventory";
-    const dbName    = "carros-page-db";
-    const storeName = "inventario";
     const inventoryGrid = document.getElementById("inventoryGrid");
     const template      = document.getElementById("carCardTemplate");
     let carsCache = [];
@@ -320,87 +317,19 @@
       return cars.filter((car) => !shouldRemoveCar(car));
     }
 
-    function openDatabase() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open(dbName, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror  = () => reject(new Error("No se pudo abrir la base de datos del navegador."));
-      });
-    }
-
-    async function readInventoryFromDb() {
-      const db = await openDatabase();
-      return new Promise((resolve, reject) => {
-        const tx  = db.transaction(storeName, "readonly");
-        const req = tx.objectStore(storeName).get(storageKey);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror   = () => reject(new Error("No se pudo leer el inventario guardado."));
-      });
-    }
-
-    async function writeInventoryToDb(cars) {
-      const db = await openDatabase();
-      return new Promise((resolve, reject) => {
-        const tx  = db.transaction(storeName, "readwrite");
-        const req = tx.objectStore(storeName).put(cars, storageKey);
-        req.onsuccess = () => resolve();
-        req.onerror   = () => reject(new Error("No se pudo guardar el inventario."));
-      });
-    }
-
     async function loadCars() {
-      const savedCars = await readInventoryFromDb();
-      if (Array.isArray(savedCars) && savedCars.length > 0) {
-        let cleaned = sanitizeCars(savedCars);
-        let needsSave = false;
-
-        cleaned = cleaned.map(car => {
-          const def = defaultCars.find(d => d.name === car.name);
-          if (!car.id) {
-            car.id = def ? def.id : Date.now();
-            needsSave = true;
+      try {
+        const res = await fetch("/data/cars.json?_=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.cars) && data.cars.length > 0) {
+            carsCache = sanitizeCars(data.cars);
+            return carsCache;
           }
-          if (def) {
-            if (!car.specs      && def.specs)      { car.specs      = def.specs;      needsSave = true; }
-            if (!car.highlights && def.highlights)  { car.highlights = def.highlights; needsSave = true; }
-            if (!car.price      && def.price)      { car.price      = def.price;      needsSave = true; }
-            if (!car.priceType  && def.priceType)  { car.priceType  = def.priceType;  needsSave = true; }
-          }
-          return car;
-        });
-
-        if (cleaned.length !== savedCars.length) {
-          needsSave = true;
         }
-        if (needsSave) await writeInventoryToDb(cleaned);
-        carsCache = cleaned;
-        return cleaned;
-      }
-
-      const legacy = localStorage.getItem(storageKey);
-      if (legacy) {
-        try {
-          const parsed = JSON.parse(legacy);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const cleaned = sanitizeCars(parsed);
-            await writeInventoryToDb(cleaned);
-            localStorage.removeItem(storageKey);
-            carsCache = cleaned;
-            return cleaned;
-          }
-        } catch (_) {
-          localStorage.removeItem(storageKey);
-        }
-      }
-
-      const defaults = sanitizeCars(defaultCars);
-      await writeInventoryToDb(defaults);
-      carsCache = defaults;
-      return defaults;
+      } catch(_) {}
+      carsCache = sanitizeCars(defaultCars);
+      return carsCache;
     }
 
     async function renderCars() {

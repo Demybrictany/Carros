@@ -62,31 +62,11 @@
   </div>
 
   <script>
-    const storageKey = "carros-page-inventory";
-    const dbName    = "carros-page-db";
-    const storeName = "inventario";
-
-    /* ── DB helpers ── */
-    function openDatabase() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open(dbName, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror  = () => reject(new Error("No se pudo abrir la base de datos."));
-      });
-    }
-
     async function readInventoryFromDb() {
-      const db = await openDatabase();
-      return new Promise((resolve, reject) => {
-        const tx  = db.transaction(storeName, "readonly");
-        const req = tx.objectStore(storeName).get(storageKey);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror   = () => reject(new Error("No se pudo leer el inventario."));
-      });
+      const res = await fetch("/data/cars.json?_=" + Date.now());
+      if (!res.ok) throw new Error("No se pudo cargar el inventario.");
+      const data = await res.json();
+      return Array.isArray(data.cars) ? data.cars : null;
     }
 
     /* ── Helpers ── */
