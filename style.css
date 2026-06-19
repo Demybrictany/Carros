@@ -1206,7 +1206,8 @@ a {
 
 @media (max-width: 480px) {
   body {
-    background-position: 65% top;
-    background-size: 220%;
+    background:
+      linear-gradient(rgba(13,11,8,0.72), rgba(13,11,8,0.72)),
+      url('Imagenes/FondoPrincipalTelefono.png') center top / cover no-repeat scroll;
   }
 }
