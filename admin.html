@@ -400,24 +400,22 @@
     }
 
     async function uploadImage(file) {
-      // Intentar subir a GitHub (si hay token)
-      const base64Full = await compressImage(file, 1200, 0.78);
-      const safeName   = Date.now() + "_" + file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
-      const res = await fetch("/.netlify/functions/save-cars", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ type: "upload-image", filename: safeName, base64: base64Full })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.path; // ruta de archivo en el repo
-      }
-      const err = await res.json().catch(() => ({}));
-      // Sin token: devolver base64 comprimido pequeño (para JSONBin)
-      if (err.error?.includes("GITHUB_TOKEN")) {
-        return await compressImage(file, 320, 0.5);
-      }
-      throw new Error(err.error || "Error al subir imagen");
+      const safeName = Date.now() + "_" + file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+      // Intentar subir a GitHub (mejor calidad)
+      try {
+        const base64Full = await compressImage(file, 1200, 0.78);
+        const res = await fetch("/.netlify/functions/save-cars", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ type: "upload-image", filename: safeName, base64: base64Full })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return data.path;
+        }
+      } catch(_) {}
+      // Fallback: base64 comprimido (funciona sin GitHub ni token)
+      return await compressImage(file, 640, 0.65);
     }
 
     function escH(s) {
@@ -811,8 +809,9 @@
         let idx = 0;
         for (const item of secImagesArr) {
           if (item instanceof File) {
+            if (idx > 0) await new Promise(r => setTimeout(r, 500)); // pausa entre uploads para evitar rate limit
             idx++;
-            msgEl.textContent = "Subiendo foto " + idx + "...";
+            msgEl.textContent = "Subiendo foto " + idx + " de " + secImagesArr.filter(x => x instanceof File).length + "...";
             secondaryImages.push(await uploadImage(item));
           } else {
             secondaryImages.push(item);
